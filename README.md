@@ -14,8 +14,8 @@ A gamified study tracker for JEE prep — leaderboard, XP, ranks, and AI-verifie
 
 ## Current Status
 ✅ **Database Schema**: Supabase migration applied (users, tasks, submissions, xp_log tables with RLS)
-✅ **Environment Setup**: `.env.local` template configured with project URL
-⏳ **Application Scaffold**: Next.js app not yet initialized
+✅ **Application Scaffold**: Next.js app is in `web/`
+✅ **Environment Setup**: `web/.env.local` is present; keep credentials private
 ⏳ **Authentication**: Supabase Auth not yet implemented
 ⏳ **Core Features**: Task creation, photo upload, XP system, leaderboard not yet built
 
@@ -34,8 +34,11 @@ jee-solo-leveling/
 ├── supabase/                 # Database configuration
 │   └── migrations/           # SQL migration files
 │       └── 001_init_schema.sql
-├── .env.example              # Template for environment variables
-├── .env.local                # Environment variables (NOT committed)
+├── web/                      # Next.js application
+│   ├── src/app/               # App Router pages and styles
+│   ├── src/lib/               # Shared clients and utilities
+│   ├── package.json
+│   └── .env.local             # Local environment variables (NOT committed)
 ├── .gitignore                # Git ignore rules
 ├── CLAUDE.md                 # AI assistant handoff notes
 ├── README.md                 # This file
@@ -44,36 +47,17 @@ jee-solo-leveling/
 
 ## Getting Started
 
-### 1. Configure Environment Variables
-1. Get your Supabase **anon public key** from:
-   - Supabase Dashboard → Settings → API
-2. Update `.env.local`:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://gdgeqiipxmvckvtvmbns.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-actual-anon-key-here
-   ```
+The Next.js app and its npm scripts are in `web/`. Run these commands from the repository root:
 
-### 2. Initialize Next.js Application
 ```bash
-npx create-next-app@latest .
-npm install @supabase/supabase-js
+cd web
+npm install
+npm run dev
 ```
 
-### 3. Set Up Supabase Client
-Create `lib/supabase.js`:
-```javascript
-import { createClient } from '@supabase/supabase-js'
+Open http://localhost:3000. To create a production build, run `npm run build` from `web/`.
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
-```
-
-### 4. Implement Authentication
-- Create login/signup pages using Supabase Auth
-- Protect routes with authentication checks
-- Create user profile component reading from `users` table
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `web/.env.local` for Supabase features. Never put the service-role key in a `NEXT_PUBLIC_` variable.
 
 ## Database Schema
 The Supabase migration has created:
@@ -85,12 +69,11 @@ The Supabase migration has created:
 - **Secure XP Function**: `public.award_xp()` prevents client-side manipulation
 
 ## Next Steps
-1. Verify `.env.local` has your actual Supabase anon key
-2. Initialize the Next.js app as shown above
-3. Begin implementing authentication flow
-4. Build task creation interface
-5. Add photo upload to Supabase Storage
-6. Integrate Claude API for proof verification
+1. Implement authentication flow
+2. Build task creation and submission interfaces
+3. Add photo upload to Supabase Storage
+4. Integrate server-side proof verification
+5. Build the leaderboard
 
 ## Important Notes
 - **Never commit** `.env.local` - it contains your public keys
