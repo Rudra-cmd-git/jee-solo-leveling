@@ -22,7 +22,7 @@ export function avatar(
       alt={alt ?? 'User avatar'}
       width={size}
       height={size}
-      className={twMerge('h-{size} w-{size} rounded-full object-cover border border-border/50', clsx(props.className))}
+      className={twMerge('h-{size} w-{size} rounded-full object-cover border border-border/50 system', clsx(props.className))}
       {...props}
     />
   );

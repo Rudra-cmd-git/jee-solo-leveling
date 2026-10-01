@@ -10,7 +10,7 @@ export function card(
 ) {
   return (
     <div
-      className={twMerge('rounded-lg border bg-card text-card-foreground shadow-sm', clsx(props.className))}
+      className={twMerge('rounded-xl border bg-card text-card-foreground shadow-sm system', clsx(props.className))}
       {...props}
     />
   );
