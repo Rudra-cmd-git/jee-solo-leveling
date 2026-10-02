@@ -6,6 +6,16 @@ import { supabase } from '@/lib/supabase';
 import { getRankProgress, formatNumber } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
+type TaskStat = {
+  status: string;
+  xp_value: number;
+};
+
+type SubmissionStat = {
+  ai_verdict: string;
+  tasks: Array<{ xp_value: number }>;
+};
+
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -68,6 +78,8 @@ export default function ProfilePage() {
 
       if (tasksError) throw tasksError;
 
+      const typedTasksData = (tasksData ?? []) as TaskStat[];
+
       // Get submission stats
       const { data: submissionsData, error: submissionsError } = await supabase
         .from('submissions')
@@ -84,22 +96,24 @@ export default function ProfilePage() {
 
       if (xpLogError) throw xpLogError;
 
+      const typedSubmissionsData = (submissionsData ?? []) as SubmissionStat[];
+
       const stats = {
         tasks: {
-          total: tasksData.length,
-          pending: tasksData.filter(t => t.status === 'pending').length,
-          approved: tasksData.filter(t => t.status === 'approved').length,
-          rejected: tasksData.filter(t => t.status === 'rejected').length,
-          totalXpAvailable: tasksData.reduce((sum, t) => sum + t.xp_value, 0)
+          total: typedTasksData.length,
+          pending: typedTasksData.filter(t => t.status === 'pending').length,
+          approved: typedTasksData.filter(t => t.status === 'approved').length,
+          rejected: typedTasksData.filter(t => t.status === 'rejected').length,
+          totalXpAvailable: typedTasksData.reduce((sum, t) => sum + (t.xp_value ?? 0), 0)
         },
         submissions: {
-          total: submissionsData.length,
-          approved: submissionsData.filter(s => s.ai_verdict === 'approved').length,
-          rejected: submissionsData.filter(s => s.ai_verdict === 'rejected').length,
-          pending: submissionsData.filter(s => s.ai_verdict === 'pending').length,
-          totalXpEarned: submissionsData
+          total: typedSubmissionsData.length,
+          approved: typedSubmissionsData.filter(s => s.ai_verdict === 'approved').length,
+          rejected: typedSubmissionsData.filter(s => s.ai_verdict === 'rejected').length,
+          pending: typedSubmissionsData.filter(s => s.ai_verdict === 'pending').length,
+          totalXpEarned: typedSubmissionsData
             .filter(s => s.ai_verdict === 'approved')
-            .reduce((sum, s) => sum + (s.tasks?.xp_value || 0), 0)
+            .reduce((sum, s) => sum + (s.tasks?.[0]?.xp_value ?? 0), 0)
         },
         xpLog: {
           totalEntries: xpLogData.length,

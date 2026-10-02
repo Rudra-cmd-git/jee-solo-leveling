@@ -24,6 +24,25 @@ export const signUp = async (email: string, password: string, name: string) => {
   });
 
   if (error) throw error;
+
+  if (data.user) {
+    const { error: profileError } = await supabase
+      .from('users')
+      .upsert(
+        {
+          id: data.user.id,
+          name,
+          rank: 'E',
+          total_xp: 0,
+        },
+        { onConflict: 'id' }
+      );
+
+    if (profileError) {
+      throw profileError;
+    }
+  }
+
   return data;
 };
 

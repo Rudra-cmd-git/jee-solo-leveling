@@ -25,6 +25,12 @@ export default function SubmissionModal({
   const [description, setDescription] = React.useState('');
   const [photoUrl, setPhotoUrl] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [verifying, setVerifying] = React.useState(false);
+  const [verificationResult, setVerificationResult] = React.useState<{
+    verdict: string;
+    confidence: number;
+    reasoning: string;
+  } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
 
@@ -34,27 +40,90 @@ export default function SubmissionModal({
     setIsLoading(true);
 
     try {
-      // For now, we'll just create a submission record
-      // In a full implementation, you'd upload the photo to storage first
-      const { data, error: supabaseError } = await supabase
+      // Create submission record
+      const { data: submissionData, error: supabaseError } = await supabase
         .from('submissions')
         .insert({
           task_id: taskId,
-          photo_url: photoUrl || 'https://example.com/placeholder.jpg', // Placeholder
+          photo_url: photoUrl || 'https://example.com/placeholder.jpg',
           ai_verdict: 'pending',
-        });
+        })
+        .select()
+        .single();
 
       if (supabaseError) throw supabaseError;
 
-      // Close modal and refresh submissions
-      onClose();
-      // In a real app, you might want to refetch submissions here
-      // or use a callback prop to notify the parent
-      router.refresh();
+      if (!submissionData) {
+        throw new Error('Failed to create submission');
+      }
+
+      // Start verification process
+      setVerifying(true);
+      setIsLoading(false);
+
+      try {
+        // Call our verification API
+        const verificationResponse = await fetch(
+          new URL('/api/verify-submission', window.location.origin),
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              submissionId: submissionData.id,
+              photoUrl: submissionData.photo_url,
+            }),
+          }
+        );
+
+        if (!verificationResponse.ok) {
+          throw new Error(`Verification failed: ${verificationResponse.statusText}`);
+        }
+
+        const verificationData = await verificationResponse.json();
+        setVerificationResult(verificationData);
+
+        // Update submission with verification results
+        const { error: updateError } = await supabase
+          .from('submissions')
+          .update({
+            ai_verdict: verificationData.verdict,
+            verified_at: new Date().toISOString(),
+          })
+          .eq('id', submissionData.id);
+
+        if (updateError) throw updateError;
+
+        // If approved, award XP
+        if (verificationData.verdict === 'approved') {
+          const { error: xpError } = await supabase.rpc('award_xp', {
+            p_user_id: (await supabase.auth.getUser()).data.user?.id,
+            p_xp_change: taskXpValue,
+            p_reason: `Completed task: ${taskTitle}`,
+          });
+
+          if (xpError) {
+            console.warn('XP award failed:', xpError);
+            // Don't fail the submission if XP award fails
+          }
+        }
+
+      } catch (verifyError) {
+        console.error('Verification error:', verifyError);
+        // Even if verification fails, we keep the submission as pending
+        // User can retry verification later
+        setVerificationResult({
+          verdict: 'pending',
+          confidence: 0,
+          reasoning: 'Verification service unavailable',
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to submit proof');
     } finally {
       setIsLoading(false);
+      setVerifying(false);
     }
   };
 
@@ -108,21 +177,68 @@ export default function SubmissionModal({
                 </div>
               )}
 
+              {verificationResult && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-5 h-5">
+                      {verificationResult.verdict === 'approved' && (
+                        <svg className="fill-current" viewBox="0 0 20 20">
+                          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 9.172l3.742 3.742 1.447-1.415a1 1 0 011.414 0l2.06 2.06a1 1 0 01-1.414 1.414l-1.415-1.447-3.742-3.742a1 1 0 01-1.414-1.414z" />
+                        </svg>
+                      )}
+                      {verificationResult.verdict === 'rejected' && (
+                        <svg className="fill-current" viewBox="0 0 20 20">
+                          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" />
+                        </svg>
+                      )}
+                      {verificationResult.verdict === 'pending' && (
+                        <svg className="fill-current" viewBox="0 0 20 20">
+                          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm.93-4.707l1.414 1.414a1 1 0 001.414-1.414l1.414-1.414a1 1 0 00-1.414-1.414L12.343 9.293 13.757 7.879a1 1 0 00-1.414-1.414l-1.414 1.414L10.93 11.293 9.516 9.879a1 1 0 00-1.414 1.414l1.414 1.414z" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        Verification: {verificationResult.verdict.charAt(0).toUpperCase() + verificationResult.verdict.slice(1)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Confidence: {(verificationResult.confidence * 100).toFixed(0)}%
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {verificationResult.reasoning}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={onClose}
-                  size="sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  isLoading={isLoading}
-                  size="sm"
-                >
-                  Submit Proof
-                </Button>
+                {verifying ? (
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    size="sm"
+                  >
+                    Closing...
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    size="sm"
+                  >
+                    Close
+                  </Button>
+                )}
+                {!verifying && !isLoading && (
+                  <Button
+                    onClick={handleSubmit}
+                    isLoading={isLoading}
+                    size="sm"
+                  >
+                    {isLoading ? 'Submitting...' : 'Submit Proof'}
+                  </Button>
+                )}
               </div>
             </form>
           </ModalContent>

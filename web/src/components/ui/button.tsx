@@ -32,18 +32,24 @@ const buttonVariants = cva(
   }
 );
 
-export function button(
-  className: string,
-  { variant, size, ...props }: VariantProps<typeof buttonVariants> & React.ButtonHTMLAttributes<HTMLButtonElement>
-) {
-  return (
-    <button
-      className={twMerge(buttonVariants({ variant, size, className }), clsx(props.className))}
-      {...props}
-    />
-  );
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
 }
 
-button.displayName = 'button';
-export { button as Button };
-export default button;
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, isLoading = false, disabled, ...props }, ref) => (
+    <button
+      ref={ref}
+      className={twMerge(buttonVariants({ variant, size }), clsx(className))}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
+      {...props}
+    />
+  ),
+);
+
+Button.displayName = 'Button';
+export const button = Button;
+export default Button;

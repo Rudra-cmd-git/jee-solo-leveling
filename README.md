@@ -5,7 +5,7 @@ A gamified study tracker for JEE prep — leaderboard, XP, ranks, and AI-verifie
 ## Stack
 - **Frontend:** Next.js (React)
 - **Backend/DB/Auth:** Supabase
-- **AI Verification:** Claude API (vision)
+- **AI Verification:** VisionSter image analysis (current integration)
 - **Hosting:** Vercel
 
 ## Team
@@ -13,18 +13,18 @@ A gamified study tracker for JEE prep — leaderboard, XP, ranks, and AI-verifie
 - Person B: Data & Intelligence
 
 ## Current Status
-✅ **Database Schema**: Supabase migration applied (users, tasks, submissions, xp_log tables with RLS)
-✅ **Application Scaffold**: Next.js app is in `web/`
-✅ **Environment Setup**: `web/.env.local` is present; keep credentials private
-⏳ **Authentication**: Supabase Auth not yet implemented
-⏳ **Core Features**: Task creation, photo upload, XP system, leaderboard not yet built
+✅ **Database Schema**: Supabase schema, RLS policies, and restricted XP award function are defined in the migration.
+✅ **Application**: The runnable Next.js app is in `web/`.
+✅ **Authentication**: Supabase sign-up, sign-in, session handling, and sign-out are implemented.
+✅ **Study Tracker**: Users can create tasks, submit image URLs for proof verification, view XP/rank progress, and see the leaderboard and profile statistics.
+✅ **Verification Flow**: Proof submissions are sent through `/api/verify-submission`, which forwards the image URL to VisionSter for analysis.
+⏳ **Remaining**: Review third-party proof-image handling, replace proof URL entry with storage upload, move XP awarding to a trusted server-side path, add automated tests, and prepare deployment configuration.
 
 ## Build Order (Following Blueprint)
-1. Project setup + login
-2. Task creation + XP logic
-3. Photo upload + Claude verification
-4. Leaderboard
-5. Polish & deploy
+1. Replace proof image URL entry with Supabase Storage uploads.
+2. Add automated tests for verification and XP awarding.
+3. Verify the end-to-end flow with the configured Supabase and verification services.
+4. Review verification-provider data handling and configure deployment.
 
 ## Directory Structure
 ```
@@ -35,8 +35,9 @@ jee-solo-leveling/
 │   └── migrations/           # SQL migration files
 │       └── 001_init_schema.sql
 ├── web/                      # Next.js application
-│   ├── src/app/               # App Router pages and styles
-│   ├── src/lib/               # Shared clients and utilities
+│   ├── src/app/               # Dashboard, auth, profile, API routes, and styles
+│   ├── src/components/        # Task/submission flows and reusable UI
+│   ├── src/lib/               # Supabase client, auth, and utilities
 │   ├── package.json
 │   └── .env.local             # Local environment variables (NOT committed)
 ├── .gitignore                # Git ignore rules
@@ -69,11 +70,10 @@ The Supabase migration has created:
 - **Secure XP Function**: `public.award_xp()` prevents client-side manipulation
 
 ## Next Steps
-1. Implement authentication flow
-2. Build task creation and submission interfaces
-3. Add photo upload to Supabase Storage
-4. Integrate server-side proof verification
-5. Build the leaderboard
+1. Add actual image uploads to Supabase Storage; the current submission flow accepts an image URL.
+2. Add tests for the verification route and XP-award flow.
+3. Run and document an end-to-end test against the configured services.
+4. Configure deployment environment variables and deploy.
 
 ## Important Notes
 - **Never commit** `.env.local` - it contains your public keys

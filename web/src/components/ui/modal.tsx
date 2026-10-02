@@ -1,119 +1,94 @@
-import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
+import * as React from 'react';
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils';
 
-const ModalPortal = ({ children }: { children: React.ReactNode }) => {
-  return ReactDOM.createPortal(
+export const ModalPortal = ({ children }: { children: React.ReactNode }) => {
+  // Simplified modal without portal dependency for now
+  return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-white rounded-lg p-6 shadow-lg">
           {children}
         </div>
       </div>
-    </div>,
-    document.body,
-  )
-}
+    </div>
+  );
+};
 
-const ModalOverlay = React.forwardRef<
-  HTMLElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => (
+export const ModalOverlay = ({ className, onClick, children }: {
+  className?: string;
+  onClick: () => void;
+  children?: React.ReactNode;
+}) => (
   <button
-    ref={ref}
     className={cn(
       'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
       className,
     )}
     aria-label="Close"
-    {...props}
-  />
-))
-ModalOverlay.displayName = 'ModalOverlay'
+    onClick={onClick}
+  >
+    {children}
+  </button>
+);
 
-const ModalContent = React.forwardRef<
-  HTMLElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, children, ...props }, ref) => (
+export const ModalContent = ({ className, children }: {
+  className?: string;
+  children: React.ReactNode;
+}) => (
   <div
-    ref={ref}
     className={cn(
       'relative bg-white rounded-lg shadow-md w-full max-w-lg p-6',
       className,
     )}
-    {...props}
   >
-    <Slot className="space-y-6">{children}</Slot>
+    <div className="space-y-6">{children}</div>
   </div>
-))
-ModalContent.displayName = 'ModalContent'
+);
 
-const ModalHeader = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement>
->(({ className, ...props }, ref) => (
+export const ModalHeader = ({ className, children }: {
+  className?: string;
+  children: React.ReactNode;
+}) => (
   <div
-    ref={ref}
     className={cn('flex flex-col space-y-2 text-center sm:text-left', className)}
-    {...props}
   >
-    <Slot />
+    {children}
   </div>
-))
-ModalHeader.displayName = 'ModalHeader'
+);
 
-const ModalTitle = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement>
->(({ className, ...props }, ref) => (
+export const ModalTitle = ({ className, children }: {
+  className?: string;
+  children: React.ReactNode;
+}) => (
   <h2
-    ref={ref}
     className={cn(
       'text-xl font-semibold leading-none tracking-tight',
       className,
     )}
-    {...props}
   >
-    <Slot />
+    {children}
   </h2>
-))
-ModalTitle.displayName = 'ModalTitle'
+);
 
-const ModalDescription = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement>
->(({ className, ...props }, ref) => (
+export const ModalDescription = ({ className, children }: {
+  className?: string;
+  children: React.ReactNode;
+}) => (
   <p
-    ref={ref}
     className={cn('text-muted-foreground', className)}
-    {...props}
   >
-    <Slot />
+    {children}
   </p>
-))
-ModalDescription.displayName = 'ModalDescription'
+);
 
-const ModalFooter = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement>
->(({ className, ...props }, ref) => (
+export const ModalFooter = ({ className, children }: {
+  className?: string;
+  children: React.ReactNode;
+}) => (
   <div
-    ref={ref}
     className={cn('flex flex-col-reverse sm:flex-row sm:space-x-2 sm:justify-end', className)}
-    {...props}
   >
-    <Slot />
+    {children}
   </div>
-))
-ModalFooter.displayName = 'ModalFooter'
-
-export {
-  ModalPortal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  ModalDescription,
-  ModalFooter,
-}
+);

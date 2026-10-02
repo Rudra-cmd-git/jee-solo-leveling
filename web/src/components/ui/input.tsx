@@ -20,17 +20,18 @@ const inputVariants = cva(
   }
 );
 
-export function input(
-  className: string,
-  { ...props }: VariantProps<typeof inputVariants> & React.InputHTMLAttributes<HTMLInputElement>
-) {
-  return (
+export type InputProps = VariantProps<typeof inputVariants> & React.InputHTMLAttributes<HTMLInputElement>;
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, ...props }, ref) => (
     <input
-      className={twMerge(inputVariants(), clsx(props.className))}
+      ref={ref}
+      className={twMerge(inputVariants(), clsx(className))}
       {...props}
     />
-  );
-}
+  ),
+);
 
-input.displayName = 'input';
-export default input;
+Input.displayName = 'Input';
+export const input = Input;
+export default Input;

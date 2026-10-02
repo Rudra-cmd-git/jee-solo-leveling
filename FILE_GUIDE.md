@@ -39,18 +39,24 @@ This is the file-by-file map for JEE Solo Leveling. The existing layout is group
 | `web/src/app/` | App Router route pages, shared root layout, and app-wide styles. Keep route entry files in their route folders here. |
 | `web/src/app/layout.tsx` | Root HTML document, shared font setup, metadata, and wrapper for all routes. |
 | `web/src/app/globals.css` | Global reset and base styles shared across routes. |
-| `web/src/app/page.tsx` | Homepage route at `/`; currently the default Next.js starter page. |
+| `web/src/app/page.tsx` | Authenticated study dashboard at `/`, including tasks, recent submissions, rank progress, and leaderboard. |
 | `web/src/app/page.module.css` | Component-scoped styles for the homepage route. |
 | `web/src/app/favicon.ico` | Browser tab and bookmark icon for the app. |
+| `web/src/app/api/verify-submission/route.ts` | Server-side endpoint for proof image verification. |
 | `web/src/app/sign-in/page.tsx` | Sign-in form route at `/sign-in`, connected to the Supabase auth helper. |
 | `web/src/app/sign-up/page.tsx` | Account creation form route at `/sign-up`, connected to the Supabase auth helper. |
+| `web/src/app/profile/page.tsx` | Profile route at `/profile`, showing rank progress, task/submission statistics, and XP history. |
 | `web/src/app/logout/route.ts` | HTTP POST route that signs out and redirects to the sign-in page. |
 | `web/src/app/logout/action.ts` | Server action for signing out and redirecting to the sign-in page. |
+| `web/src/components/CreateTaskModal.tsx` | Modal for creating study tasks. |
+| `web/src/components/SubmissionModal.tsx` | Submission form and client flow for saving proof and requesting verification. |
 | `web/src/components/ui/` | Shared presentational UI components used by app routes. |
 | `web/src/components/ui/avatar.tsx` | Avatar image component with size and fallback source handling. |
 | `web/src/components/ui/button.tsx` | Reusable button styles and variants. |
 | `web/src/components/ui/card.tsx` | Reusable bordered card container. |
 | `web/src/components/ui/input.tsx` | Reusable styled input element. |
+| `web/src/components/ui/modal.tsx` | Shared modal layout and content components. |
+| `web/src/components/ui/index.ts` | Barrel exports for shared UI components. |
 | `web/src/lib/` | Shared application helpers and service clients. |
 | `web/src/lib/auth.ts` | Supabase sign-in, sign-up, sign-out, user lookup, profile update, and auth-change helpers. |
 | `web/src/lib/auth-context.tsx` | Client React context for exposing the current user and auth loading state. |

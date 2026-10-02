@@ -2,10 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --background: #050505;
+  --foreground: #ededed;
+  --secondary-card: #0a0a0a;
+  --accent-purple: #8b5cf6;
+  --accent-blue: #0ea5e9;
+  --danger-red: #f43f5e;
+}
+
 @layer base {
   :root {
-    --background: #000000;
-    --foreground: #00ff88;
+    --background: #050505;
+    --foreground: #ededed;
+    --secondary-card: #0a0a0a;
+    --accent-purple: #8b5cf6;
+    --accent-blue: #0ea5e9;
+    --danger-red: #f43f5e;
 
     --system-primary: #00ff88;
     --system-secondary: #8a2be2;
@@ -25,8 +38,8 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: #000000;
-      --foreground: #00ff88;
+      --background: #050505;
+      --foreground: #ededed;
     }
   }
 

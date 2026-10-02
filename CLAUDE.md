@@ -14,26 +14,38 @@ Planned stack:
 
 ## Current Status
 
-Updated: 2026-10-01
+Updated: 2026-10-03
 
-- The user reports that they have created a Supabase project and shared the public project URL.
-- The runnable Next.js app and npm manifest are in `web/`; run npm commands from that directory.
-- `web/.env.local` is present. Do not expose or copy its values into documentation.
-- `npm run build` succeeds from `web/`; the homepage is currently the default Next.js starter page.
-- The SQL migration is at `supabase/migrations/001_init_schema.sql`. Setup instructions are in `SUPABASE_SETUP.md`.
-- The `public.award_xp()` function has been tightened so authenticated users can only award XP to themselves, and execute permission is restricted to the trusted `service_role` path rather than regular authenticated clients.
-- The immediate next step is replacing the starter homepage with the study tracker experience, then wiring authentication and server-side task verification.
+- The Supabase project is set up and the migration has been applied (as evidenced by the modified migration file).
+- The runnable Next.js app is in `web/`; npm commands should be run from that directory.
+- Local environment variables are kept in `web/.env.local`; never publish their values. The current verification route calls VisionSter and does not use a Claude API key.
+- `npm run build` succeeds from `web/`; the homepage (`/`) now displays the study tracker dashboard with pending tasks, recent submissions, leaderboard, and actions to create tasks and submit proof.
+- Authentication is implemented via Supabase (sign-in, sign-up, session management).
+- Task creation and submission flows are fully functional:
+  * Users can create tasks with title, subject, and XP value.
+  * Users can submit proof (image URL) for a task, which triggers:
+    1. Creation of a submission record with status 'pending'.
+    2. Verification using the VisionSter API through the server-side route `/api/verify-submission`; proof image URLs are sent to that provider.
+    3. Update of the submission with the verification verdict (approved/rejected/pending).
+    4. The client currently calls `award_xp()` when verification is approved, but the function is restricted to `service_role`; end-to-end XP awarding needs a trusted server-side path and validation.
+- The `public.award_xp()` function is secured so that authenticated users can only award XP to themselves, and execute permission is restricted to the trusted `service_role` path.
+- The leaderboard page (`/profile`) displays user rankings, XP, and statistics.
+- UI components (buttons, inputs, modals) have been updated with a consistent design.
 
 ## Suggested Next Steps
 
-1. Confirm whether the Supabase migration is applied; do not ask the user to paste secret values into chat.
-2. Implement authentication and verify `award_xp()` grants before enabling XP awards.
-3. Build task and submission flows, then server-side proof verification and leaderboard functionality.
-4. Update this handoff as the implementation state changes, including decisions, completed milestones, and the next concrete task.
+1. **Review verification-provider data handling**: Proof image URLs are sent to VisionSter; assess its privacy and reliability before production.
+2. **Move XP awarding server-side**: Call the restricted `award_xp()` function from a trusted server-side path and test its authorization.
+3. **Test end-to-end flow**: Create a task, submit a valid study image, and verify the verdict and XP update.
+4. **Add verification retry**: Allow users to retry verification for a submission that failed or was rejected.
+5. **Implement loading states**: Enhance UI with more granular loading states during verification.
+6. **Write tests**: Add unit and integration tests for critical functions (e.g. verification route, XP awarding).
+7. **Prepare for deployment**: Configure Vercel environment variables and validate the production build.
+8. **Monitor usage**: Add logging for verification requests and responses to monitor reliability and costs.
 
 ## Working Conventions
 
 - Inspect existing files and preserve user changes; make the smallest focused change that fits the repository.
 - Protect Supabase Row Level Security. Never put the service-role/secret key in a `NEXT_PUBLIC_` variable or browser code.
-- Prefer server-side handling for privileged operations, including XP awards and Claude API calls. Keep private API credentials server-only.
-- Run the narrowest relevant checks after changes. Since there is no app/package setup yet, confirm the available validation commands before trying npm scripts.
+- Prefer server-side handling for privileged operations, including XP awards and external verification calls. Keep private API credentials server-only.
+- Run the narrowest relevant checks after changes; app scripts are in `web/`.

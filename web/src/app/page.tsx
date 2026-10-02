@@ -8,16 +8,36 @@ import { useRouter } from 'next/navigation';
 import SubmissionModal from '@/components/SubmissionModal';
 import CreateTaskModal from '@/components/CreateTaskModal';
 
+type Task = {
+  id: string;
+  title: string;
+  subject: string;
+  xp_value: number;
+  status?: string;
+  created_at?: string;
+  user_id?: string;
+};
+
+type SubmissionRow = {
+  id: string;
+  submitted_at: string;
+  ai_verdict: 'approved' | 'rejected' | 'pending' | string;
+  tasks: Array<{
+    title: string;
+    xp_value: number;
+  }>;
+};
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [openSubmissionModal, setOpenSubmissionModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [openCreateTaskModal, setOpenCreateTaskModal] = useState(false);
 
   // Fetch user profile from public.users table
@@ -80,7 +100,7 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTasks(data);
+      setTasks((data ?? []) as Task[]);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     }
@@ -104,7 +124,7 @@ export default function DashboardPage() {
         .limit(5);
 
       if (error) throw error;
-      setSubmissions(data);
+      setSubmissions((data ?? []) as SubmissionRow[]);
     } catch (error) {
       console.error('Error fetching submissions:', error);
     }
@@ -236,33 +256,37 @@ export default function DashboardPage() {
             <>
               <h2 className="text-xl font-bold mb-4 mt-6">Recent Submissions</h2>
               <div className="space-y-3">
-                {submissions.map((submission) => (
-                  <div key={submission.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold">{submission.tasks.title}</h3>
-                        <p className="text-gray-600 mt-1">
-                          {new Date(submission.submitted_at).toLocaleDateString()}
-                        </p>
-                        {submission.ai_verdict === 'approved' && (
-                          <p className="text-green-600 font-medium mt-1">
-                            Verified +{submission.tasks.xp_value} XP
+                {submissions.map((submission) => {
+                  const taskInfo = submission.tasks?.[0];
+
+                  return (
+                    <div key={submission.id} className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold">{taskInfo?.title ?? 'Task'}</h3>
+                          <p className="text-gray-600 mt-1">
+                            {new Date(submission.submitted_at).toLocaleDateString()}
                           </p>
-                        )}
-                        {submission.ai_verdict === 'rejected' && (
-                          <p className="text-red-600 font-medium mt-1">
-                            Rejected
-                          </p>
-                        )}
-                        {submission.ai_verdict === 'pending' && (
-                          <p className="text-yellow-600 font-medium mt-1">
-                            Pending Review
-                          </p>
-                        )}
+                          {submission.ai_verdict === 'approved' && (
+                            <p className="text-green-600 font-medium mt-1">
+                              Verified +{taskInfo?.xp_value ?? 0} XP
+                            </p>
+                          )}
+                          {submission.ai_verdict === 'rejected' && (
+                            <p className="text-red-600 font-medium mt-1">
+                              Rejected
+                            </p>
+                          )}
+                          {submission.ai_verdict === 'pending' && (
+                            <p className="text-yellow-600 font-medium mt-1">
+                              Pending Review
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (
