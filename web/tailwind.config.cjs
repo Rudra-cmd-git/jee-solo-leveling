@@ -9,6 +9,17 @@ module.exports = {
       colors: {
         background: '#000000',
         foreground: '#00ff88',
+        primary: '#00ff88',
+        'primary-foreground': '#000000',
+        secondary: '#8a2be2',
+        'secondary-foreground': '#ffffff',
+        accent: '#ff00ff',
+        'accent-foreground': '#000000',
+        destructive: '#f43f5e',
+        'destructive-foreground': '#ffffff',
+        input: '#333333',
+        ring: '#00ff88',
+        'muted-foreground': '#a3a3a3',
         system: {
           primary: '#00ff88',
           secondary: '#8a2be2',
