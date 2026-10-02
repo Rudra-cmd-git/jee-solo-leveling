@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #000000;
+    --foreground: #00ff88;
+
+    --system-primary: #00ff88;
+    --system-secondary: #8a2be2;
+    --system-accent: #ff00ff;
+    --system-dark: #000000;
+    --system-darker: #000000;
+    --system-gray: #1a1a1a;
+    --system-light: #333333;
+
+    --rank-E: #808080;
+    --rank-D: #00ff00;
+    --rank-C: #0088ff;
+    --rank-B: #8a2be2;
+    --rank-A: #ffd700;
+    --rank-S: #ff8c00;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #000000;
+      --foreground: #00ff88;
+    }
+  }
+
+  html {
+    height: 100%;
+  }
+
+  html,
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter);
+  }
+
+  body {
+    @apply min-h-[100%] flex flex-col;
+  }
+
+  * {
+    @apply box-border m-0 p-0;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-orbitron;
+    letter-spacing: -0.025em;
+  }
+}
+
+@layer components {
+  /* Glass panel effect */
+  .glass-panel {
+    @apply bg-black/30 backdrop-blur border border-primary/20 rounded-xl shadow-glass;
+  }
+
+  /* Glowing border effect */
+  .glowing-border {
+    @apply relative border-transparent rounded-xl bg-background;
+  }
+
+  .glowing-border::after {
+    @apply content-[''] absolute -inset-2 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent -z-1 opacity-0 transition-opacity duration-300;
+  }
+
+  .glowing-border:hover::after,
+  .glowing-border:focus-within::after {
+    @apply opacity-50;
+  }
+
+  /* System label style */
+  .system-label {
+    @apply inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider px-3 py-0.5 bg-primary/10 border border-primary/20 rounded text-primary;
+  }
+
+  .system-label::before {
+    @apply content-['[SYSTEM]'] font-orbitron text-xs opacity-80 mr-1;
+  }
+
+  /* Rank badge styles */
+  .rank-badge {
+    @apply inline-flex items-center gap-1 text-sm font-semibold uppercase text-xs px-3 py-0.5 rounded font-orbitron;
+  }
+
+  .rank-badge.E {
+    @apply bg-gray-500/20 text-gray-400;
+  }
+  .rank-badge.D {
+    @apply bg-green-500/20 text-green-400;
+  }
+  .rank-badge.C {
+    @apply bg-blue-500/20 text-blue-400;
+  }
+  .rank-badge.B {
+    @apply bg-violet-500/20 text-violet-400;
+  }
+  .rank-badge.A {
+    @apply bg-yellow-500/20 text-yellow-400;
+  }
+  .rank-badge.S {
+    @apply bg-orange-500/20 text-orange-400;
+  }
+
+  .rank-badge.E::after {
+    @apply content-['E'];
+  }
+  .rank-badge.D::after {
+    @apply content-['D'];
+  }
+  .rank-badge.C::after {
+    @apply content-['C'];
+  }
+  .rank-badge.B::after {
+    @apply content-['B'];
+  }
+  .rank-badge.A::after {
+    @apply content-['A'];
+  }
+  .rank-badge.S::after {
+    @apply content-['S'];
+  }
+
+  /* XP Bar styles */
+  .xp-bar {
+    @apply w-full h-2 bg-white/10 rounded overflow-hidden mt-1;
+  }
+
+  .xp-bar-fill {
+    @apply h-full bg-gradient-to-r from-primary via-secondary rounded transition-all duration-1000 ease-out shadow-glow;
+  }
+
+  /* Toast styles */
+  .toast {
+    @apply fixed bottom-4 right-4 w-[300px] max-w-[400px] bg-black/80 backdrop-blur border border-primary/20 rounded-xl p-6 shadow-glass z-50 animate-slideUp;
+  }
+
+  .toast-header {
+    @apply flex justify-between items-center mb-4;
+  }
+
+  .toast-title {
+    @apply font-orbitron text-lg font-semibold text-primary;
+  }
+
+  .toast-close {
+    @apply bg-transparent border-none text-xl leading-none text-foreground opacity-70 hover:opacity-100;
+  }
+
+  .toast-content {
+    @apply text-foreground leading-relaxed;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply bg-black/20 backdrop-blur border border-primary/10 rounded-xl p-6 text-center transition-all duration-300 hover:bg-black/30 hover:-translate-y-1 hover:shadow-glow;
+  }
+
+  .stat-value {
+    @apply font-orbitron text-3xl font-bold text-primary mt-2;
+  }
+
+  .stat-label {
+    @apply text-sm uppercase tracking-wider text-foreground/80;
+  }
+}
+
+@layer utilities {
+  .animate-pulse {
+    animation: pulse 2s infinite;
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
