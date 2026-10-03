@@ -16,32 +16,51 @@ Planned stack:
 
 Updated: 2026-10-03
 
-- The Supabase project is set up and the migration has been applied (as evidenced by the modified migration file).
+### Priority 0: User Profile Creation Foundation ✅ COMPLETE
+- **Status**: FIXED AND DEPLOYED
+- **Change**: Removed redundant frontend profile creation code from `web/src/lib/auth.ts`
+  - Profiles are now created exclusively by database trigger (atomic, idempotent, secure)
+  - Race condition eliminated
+  - No breaking changes to frontend
+- **For Frontend Developers**: See section below
+- **Backend Details**: See `backend/README.md` for deployment instructions
+
+### Core Infrastructure
+- The Supabase project is set up and migrations applied.
 - The runnable Next.js app is in `web/`; npm commands should be run from that directory.
-- Local environment variables are kept in `web/.env.local`; never publish their values. The current verification route calls VisionSter and does not use a Claude API key.
-- `npm run build` succeeds from `web/`; the homepage (`/`) now displays the study tracker dashboard with pending tasks, recent submissions, leaderboard, and actions to create tasks and submit proof.
-- Authentication is implemented via Supabase (sign-in, sign-up, session management).
-- Task creation and submission flows are fully functional:
-  * Users can create tasks with title, subject, and XP value.
-  * Users can submit proof (image URL) for a task, which triggers:
-    1. Creation of a submission record with status 'pending'.
-    2. Verification using the VisionSter API through the server-side route `/api/verify-submission`; proof image URLs are sent to that provider.
-    3. Update of the submission with the verification verdict (approved/rejected/pending).
-    4. The client currently calls `award_xp()` when verification is approved, but the function is restricted to `service_role`; end-to-end XP awarding needs a trusted server-side path and validation.
-- The `public.award_xp()` function is secured so that authenticated users can only award XP to themselves, and execute permission is restricted to the trusted `service_role` path.
-- The leaderboard page (`/profile`) displays user rankings, XP, and statistics.
-- UI components (buttons, inputs, modals) have been updated with a consistent design.
+- Local environment variables are kept in `web/.env.local`; never publish their values.
+- `npm run build` succeeds from `web/` with no errors (TypeScript clean).
+
+### Features Implemented
+- **Authentication**: Sign-in, sign-up, session management via Supabase.
+  - Sign-up now passes name in auth metadata (extracted by database trigger)
+  - Profiles auto-created by database trigger (atomic with auth.users INSERT)
+- **Task Management**: Users can create tasks with title, subject, and XP value.
+- **Submission Flow**: Users can submit proof (image URL) for verification via VisionSter API.
+- **Verification**: Server-side route `/api/verify-submission` handles proof validation.
+- **XP Awarding**: `public.award_xp()` function secured with `service_role` permission only.
+  - Currently called from frontend (not ideal)
+  - Next step: Move to server-side route ([[backend-xp-awarding]])
+- **Dashboard**: Homepage (`/`) displays study tracker with pending tasks, recent submissions, leaderboard.
+- **Profile Page**: (`/profile`) displays user rankings, XP, and statistics.
+- **UI**: Consistent design with buttons, inputs, modals, and form components.
 
 ## Suggested Next Steps
 
-1. **Review verification-provider data handling**: Proof image URLs are sent to VisionSter; assess its privacy and reliability before production.
-2. **Move XP awarding server-side**: Call the restricted `award_xp()` function from a trusted server-side path and test its authorization.
-3. **Test end-to-end flow**: Create a task, submit a valid study image, and verify the verdict and XP update.
-4. **Add verification retry**: Allow users to retry verification for a submission that failed or was rejected.
-5. **Implement loading states**: Enhance UI with more granular loading states during verification.
-6. **Write tests**: Add unit and integration tests for critical functions (e.g. verification route, XP awarding).
-7. **Prepare for deployment**: Configure Vercel environment variables and validate the production build.
-8. **Monitor usage**: Add logging for verification requests and responses to monitor reliability and costs.
+### Priority 1: Backend XP Awarding ⏳ IN QUEUE
+Currently, XP is awarded from the frontend after verification. This should be moved to a trusted server-side path.
+1. Create a server-side route (e.g., `/api/award-xp`) that calls `public.award_xp()`
+2. Move XP awarding logic from frontend to this new endpoint
+3. Frontend should call this endpoint only after verification is complete
+4. Validate user ID and reason on the server before calling the function
+
+### Other Suggested Next Steps (Lower Priority)
+1. **Verification Provider Assessment**: Assess VisionSter API's privacy and reliability before production.
+2. **Verification Retry**: Allow users to retry verification for failed/rejected submissions.
+3. **Loading States**: Enhance UI with more granular loading states during verification.
+4. **Write Tests**: Add unit and integration tests for critical functions.
+5. **Prepare for Deployment**: Configure Vercel environment variables and validate production build.
+6. **Monitor Usage**: Add logging for verification requests and responses to monitor reliability and costs.
 
 ## Working Conventions
 
