@@ -4,11 +4,15 @@
 
 -- This migration improves the handle_new_user() trigger to:
 -- 1. Add explicit search_path for security
--- 2. Add error handling
--- 3. Ensure the trigger is idempotent
+-- 2. Remove broad exception handling to expose real errors
+-- 3. Ensure the trigger is idempotent via ON CONFLICT
 -- 4. Document the expected behavior
 
--- Recreate the function with improved safety
+-- CRITICAL: This trigger MUST NOT silently swallow profile creation failures.
+-- If public.users insertion fails, the auth.users INSERT transaction MUST fail.
+-- This maintains the single source of truth: auth.users ↔ public.users (1:1).
+
+-- Recreate the function with strict error propagation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -27,8 +31,8 @@ BEGIN
     END IF;
 
     -- Insert profile for new auth user
-    -- ON CONFLICT handles the case where the profile row already exists
-    -- (e.g., if this trigger somehow fires multiple times)
+    -- ON CONFLICT (id) DO NOTHING ensures idempotency if this trigger somehow fires twice.
+    -- Any other error (permission, constraint, schema) will propagate and fail the transaction.
     INSERT INTO public.users (id, name, rank, total_xp, created_at, updated_at)
     VALUES (
         NEW.id,
@@ -42,11 +46,6 @@ BEGIN
 
     -- Return the auth user unchanged
     RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-    -- Log the error but don't fail the auth user creation
-    -- The auth.users row has already been inserted at this point
-    RAISE WARNING 'Failed to create user profile for auth user %: %', NEW.id, SQLERRM;
-    RETURN NEW;
 END;
 $$;
 
@@ -57,8 +56,8 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
 
--- Verify that the trigger is in place
--- (This is a safety check and can be removed in production)
--- SELECT trigger_name, event_manipulation, event_object_table
--- FROM information_schema.triggers
--- WHERE trigger_name = 'on_auth_user_created';
+-- Verify function ownership and permissions
+-- The function must be owned by a role with sufficient privileges to INSERT into public.users.
+-- SECURITY DEFINER allows the function to run with the owner's privileges.
+-- Owner verification: SELECT proowner, pg_get_userbyid(proowner) FROM pg_proc WHERE proname = 'handle_new_user';
+-- Expected: Owner should be 'postgres' or the role that created the migration.

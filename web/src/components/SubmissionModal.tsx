@@ -95,16 +95,37 @@ export default function SubmissionModal({
 
         if (updateError) throw updateError;
 
-        // If approved, award XP
+        // If approved, award XP via server-side route
         if (verificationData.verdict === 'approved') {
-          const { error: xpError } = await supabase.rpc('award_xp', {
-            p_user_id: (await supabase.auth.getUser()).data.user?.id,
-            p_xp_change: taskXpValue,
-            p_reason: `Completed task: ${taskTitle}`,
-          });
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
 
-          if (xpError) {
-            console.warn('XP award failed:', xpError);
+            if (!session?.access_token) {
+              throw new Error('No active session');
+            }
+
+            const xpResponse = await fetch('/api/award-xp', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                xpChange: taskXpValue,
+                reason: `Completed task: ${taskTitle}`,
+              }),
+            });
+
+            if (!xpResponse.ok) {
+              const errorData = await xpResponse.json();
+              console.warn('XP award failed:', errorData.error);
+              // Don't fail the submission if XP award fails
+            } else {
+              const successData = await xpResponse.json();
+              console.log('XP awarded successfully:', successData);
+            }
+          } catch (xpError) {
+            console.warn('XP award error:', xpError);
             // Don't fail the submission if XP award fails
           }
         }
