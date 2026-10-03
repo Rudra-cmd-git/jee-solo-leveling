@@ -13,6 +13,8 @@ export const signIn = async (email: string, password: string) => {
 };
 
 export const signUp = async (email: string, password: string, name: string) => {
+  // Profile creation is now handled by the database trigger on auth.users INSERT.
+  // We pass the name in user metadata, and the trigger extracts it.
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -24,24 +26,6 @@ export const signUp = async (email: string, password: string, name: string) => {
   });
 
   if (error) throw error;
-
-  if (data.user) {
-    const { error: profileError } = await supabase
-      .from('users')
-      .upsert(
-        {
-          id: data.user.id,
-          name,
-          rank: 'E',
-          total_xp: 0,
-        },
-        { onConflict: 'id' }
-      );
-
-    if (profileError) {
-      throw profileError;
-    }
-  }
 
   return data;
 };
