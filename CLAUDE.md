@@ -16,12 +16,13 @@ Planned stack:
 
 Updated: 2026-10-04
 
-### Priority 0: User Profile Creation & Column Security Foundation ✅ COMPLETE
+### Priority 0: User Profile Creation & Database Security Foundation ✅ COMPLETE
 - **Status**: FIXED AND DEPLOYED
 - **Change**: Removed redundant frontend profile creation code from `web/src/lib/auth.ts`
   - Profiles are now created exclusively by database trigger (atomic, idempotent, secure)
   - Column security enforced on `public.users` (only `name` column is user-updatable)
   - RLS & Column security enforced on `public.tasks` (only `title` and `subject` are user-updatable; `id`, `user_id`, `xp_value`, `status`, `created_at`, `updated_at` are server-controlled)
+  - RLS & Column security enforced on `public.submissions` (`ai_verdict` and `verified_at` are server/AI-controlled; direct client UPDATE and DELETE denied; INSERT restricted to `pending` status for user's own tasks)
   - Executable test suites in `backend/tests/`
   - No breaking changes to frontend
 - **For Frontend Developers**: See section below
