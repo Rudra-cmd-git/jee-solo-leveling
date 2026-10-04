@@ -162,9 +162,19 @@ DECLARE
     v_log_count INTEGER;
     v_updated_count INTEGER;
 BEGIN
-    RAISE NOTICE '=== SETUP: Creating test users as postgres ===';
+    RAISE NOTICE '=== SETUP: Creating test auth.users first ===';
 
-    -- Create test users directly as postgres
+    -- Create test users in auth.users (Supabase-managed table)
+    -- Minimum required fields: id, email, encrypted_password
+    INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at)
+    VALUES
+        (v_user_1, 'xp-test-user-1@example.com', 'dummy-hash-1', NOW(), NOW(), NOW()),
+        (v_user_2, 'xp-test-user-2@example.com', 'dummy-hash-2', NOW(), NOW(), NOW())
+    ON CONFLICT (id) DO NOTHING;
+
+    RAISE NOTICE '=== SETUP: Creating test public.users rows ===';
+
+    -- Create test users in public.users (referenced by auth.users via FK)
     INSERT INTO public.users (id, name, rank, total_xp, created_at, updated_at)
     VALUES
         (v_user_1, 'XP Test User 1', 'E', 0, NOW(), NOW()),
@@ -330,11 +340,14 @@ BEGIN
     -- CLEANUP & TEARDOWN
     -- ========================================================================
 
-    RAISE NOTICE '=== CLEANUP: Removing test fixtures as postgres ===';
+    RAISE NOTICE '=== CLEANUP: Removing test fixtures ===';
     PERFORM set_config('request.jwt.claim.sub', '', true);
 
-    DELETE FROM public.xp_log WHERE user_id IN (v_user_1, v_user_2);
+    -- Delete from public.users first (FK child)
     DELETE FROM public.users WHERE id IN (v_user_1, v_user_2);
+
+    -- Delete from auth.users second (FK parent)
+    DELETE FROM auth.users WHERE id IN (v_user_1, v_user_2);
 
     RAISE NOTICE '=== ALL XP SECURITY TESTS PASSED SUCCESSFULLY ===';
 END $$;
