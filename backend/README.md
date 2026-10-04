@@ -35,6 +35,7 @@ Located in `supabase/migrations/`:
 4. **`004_lock_down_users_rls.sql`** — Restricted RLS UPDATE policy
 5. **`005_enforce_users_column_security.sql`** — PostgreSQL column-level privileges for public.users
 6. **`006_lock_down_tasks_rls.sql`** — Restricted RLS policies & column privileges for public.tasks
+7. **`007_restrict_tasks_insert.sql`** — Revokes INSERT privilege on public.tasks from authenticated role
 
 **To deploy**: Apply migrations in `supabase/migrations/` in order.
 
