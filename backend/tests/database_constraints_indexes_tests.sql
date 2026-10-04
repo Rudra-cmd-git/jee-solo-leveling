@@ -453,7 +453,9 @@ DECLARE
     v_user_1 UUID := 'c0000000-0000-4000-0000-000000000009';
     v_user_2 UUID := 'c0000000-0000-4000-0000-00000000000a';
     v_task_id UUID := 'd0000000-0000-4000-0000-000000000001';
-    v_updated_count INTEGER;
+    v_task_user_id UUID;
+    v_task_xp_value INTEGER;
+    v_task_status TEXT;
 BEGIN
     RAISE NOTICE '=== TEST R3: Authenticated cannot modify server-controlled task fields (Task 3 security) ===';
 
@@ -518,21 +520,15 @@ BEGIN
     RESET ROLE;
 
     -- Verify task is unchanged
-    DECLARE
-        v_task_user_id UUID;
-        v_task_xp_value INTEGER;
-        v_task_status TEXT;
-    BEGIN
-        SELECT user_id, xp_value, status
-        INTO v_task_user_id, v_task_xp_value, v_task_status
-        FROM public.tasks WHERE id = v_task_id;
+    SELECT user_id, xp_value, status
+    INTO v_task_user_id, v_task_xp_value, v_task_status
+    FROM public.tasks WHERE id = v_task_id;
 
-        IF v_task_user_id = v_user_1 AND v_task_xp_value = 100 AND v_task_status = 'pending' THEN
-            RAISE NOTICE 'PASS: Task fields remain unchanged after attack attempts';
-        ELSE
-            RAISE EXCEPTION 'FAIL: Task was modified despite privilege restrictions';
-        END IF;
-    END;
+    IF v_task_user_id = v_user_1 AND v_task_xp_value = 100 AND v_task_status = 'pending' THEN
+        RAISE NOTICE 'PASS: Task fields remain unchanged after attack attempts';
+    ELSE
+        RAISE EXCEPTION 'FAIL: Task was modified despite privilege restrictions';
+    END IF;
 
     -- Cleanup
     DELETE FROM public.tasks WHERE id = v_task_id;
@@ -547,6 +543,9 @@ DECLARE
     v_user_2 UUID := 'c0000000-0000-4000-0000-00000000000c';
     v_task_id UUID := 'd0000000-0000-4000-0000-000000000002';
     v_submission_id UUID := 'e0000000-0000-4000-0000-000000000001';
+    v_verdict TEXT;
+    v_verified_at TIMESTAMP WITH TIME ZONE;
+    v_sub_id UUID;
 BEGIN
     RAISE NOTICE '=== TEST R4: Authenticated cannot modify server-controlled submission fields (Task 4 security) ===';
 
@@ -630,21 +629,15 @@ BEGIN
     RESET ROLE;
 
     -- Verify submission is unchanged
-    DECLARE
-        v_verdict TEXT;
-        v_verified_at TIMESTAMP WITH TIME ZONE;
-        v_sub_id UUID;
-    BEGIN
-        SELECT ai_verdict, verified_at, id
-        INTO v_verdict, v_verified_at, v_sub_id
-        FROM public.submissions WHERE id = v_submission_id;
+    SELECT ai_verdict, verified_at, id
+    INTO v_verdict, v_verified_at, v_sub_id
+    FROM public.submissions WHERE id = v_submission_id;
 
-        IF v_verdict = 'pending' AND v_verified_at IS NULL AND v_sub_id = v_submission_id THEN
-            RAISE NOTICE 'PASS: Submission fields remain unchanged after attack attempts';
-        ELSE
-            RAISE EXCEPTION 'FAIL: Submission was modified despite privilege restrictions';
-        END IF;
-    END;
+    IF v_verdict = 'pending' AND v_verified_at IS NULL AND v_sub_id = v_submission_id THEN
+        RAISE NOTICE 'PASS: Submission fields remain unchanged after attack attempts';
+    ELSE
+        RAISE EXCEPTION 'FAIL: Submission was modified despite privilege restrictions';
+    END IF;
 
     -- Cleanup
     DELETE FROM public.submissions WHERE id = v_submission_id;
