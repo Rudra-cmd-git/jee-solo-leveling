@@ -1,6 +1,12 @@
--- TEST SUITE: Lock Down public.users RLS and Server-Controlled Fields
--- Purpose: Verify that RLS policies protect server-controlled fields from manipulation
--- These tests document the security guarantees of the restricted RLS policies
+-- TEST SUITE: Structural Verification of public.users RLS and Schema
+-- Purpose: Verify that the expected policies, triggers, functions, and data
+--          integrity constraints are in place on public.users.
+--
+-- All tests in this file are executable SELECT queries against catalog tables
+-- and live data. Run in the Supabase SQL editor as postgres.
+--
+-- For executable attack/permission tests (role switching, permission denial),
+-- see users_column_security_tests.sql.
 
 -- ============================================================================
 -- STRUCTURAL TESTS (verify policies exist and are correct)
@@ -194,86 +200,37 @@ SELECT
 FROM public.users;
 
 -- ============================================================================
--- SECURITY PROPERTY TESTS (conceptual documentation)
+-- EXECUTABLE ATTACK & PERMISSION TESTS
 -- ============================================================================
-
--- These tests document the security properties that are verified by the RLS policies.
--- They cannot be directly executed in a SQL file but show what would be tested.
-
--- TEST A: Own profile read (conceptual)
--- Action: Authenticated user executes: SELECT * FROM public.users WHERE id = auth.uid();
--- Expected: Returns the user's complete profile
--- Security Property: User can read their own profile data
-
--- TEST B: Cross-user read denied (conceptual)
--- Action: User A executes: SELECT * FROM public.users WHERE id = 'user-b-uuid';
--- Expected: RLS returns no rows (DENIED)
--- Security Property: Users cannot read another user's protected data
-
--- TEST C: XP manipulation denied (conceptual)
--- Action: User A executes: UPDATE public.users SET total_xp = 999999 WHERE id = auth.uid();
--- Expected: RLS rejects the update (DENIED)
--- Security Property: total_xp is server-controlled; only award_xp() can modify it
-
--- TEST D: Rank manipulation denied (conceptual)
--- Action: User A executes: UPDATE public.users SET rank = 'S' WHERE id = auth.uid();
--- Expected: RLS rejects the update (DENIED)
--- Security Property: rank is server-controlled; derived from total_xp
-
--- TEST E: ID manipulation denied (conceptual)
--- Action: User A executes: UPDATE public.users SET id = 'another-uuid' WHERE id = auth.uid();
--- Expected: RLS rejects the update (DENIED) + PRIMARY KEY constraint prevents it anyway
--- Security Property: id is immutable ownership field
-
--- TEST F: created_at manipulation denied (conceptual)
--- Action: User A executes: UPDATE public.users SET created_at = NOW() WHERE id = auth.uid();
--- Expected: RLS rejects the update (DENIED)
--- Security Property: created_at is immutable; set once at profile creation
-
--- TEST G: updated_at manipulation denied (conceptual)
--- Action: User A executes: UPDATE public.users SET updated_at = NOW() WHERE id = auth.uid();
--- Expected: RLS rejects the update (DENIED)
--- Security Property: updated_at is maintained by database trigger
-
--- TEST H: Cross-user update denied (conceptual)
--- Action: User A executes: UPDATE public.users SET name = 'Hacker' WHERE id = 'user-b-uuid';
--- Expected: RLS rejects the update (DENIED by USING clause)
--- Security Property: Ownership check prevents cross-user modifications
-
--- TEST I: Unauthorized profile insertion denied (conceptual)
--- Action: User A executes: INSERT INTO public.users (id, name, ...) VALUES (...);
--- Expected: RLS rejects the insert (DENIED; no INSERT policy)
--- Security Property: Task 1 trigger is the authoritative creator
-
--- TEST J: Service-role award_xp works (conceptual)
--- Action: Backend calls: SELECT award_xp(user_id, xp_change, reason);
--- Expected: Function executes successfully, updates total_xp and xp_log
--- Security Property: SECURITY DEFINER award_xp() bypasses RLS; service_role can call it
-
--- TEST K: Profile creation trigger works (conceptual)
--- Action: Backend creates: INSERT INTO auth.users (id, email, ...);
--- Expected: Trigger fires, creates corresponding public.users row with correct defaults
--- Security Property: Trigger runs as SECURITY DEFINER with postgres role; creates 1:1 relationship
+-- The attack tests (role-switching, permission denial, cross-user blocking)
+-- are implemented as executable DO $$ blocks in:
+--
+--   backend/tests/tests/users_column_security_tests.sql
+--
+-- That file contains tests A1-A10 which cover:
+--   - Own name update (allowed)
+--   - XP, rank, id, created_at, updated_at manipulation (denied)
+--   - Cross-user update (RLS blocked)
+--   - Combined malicious update (all-or-nothing denied)
+--   - Unauthorized INSERT and DELETE (denied)
+--
+-- Run that file after this one for full coverage.
 
 -- ============================================================================
--- SUMMARY & SECURITY GUARANTEES
+-- SUMMARY
 -- ============================================================================
-
--- This test suite verifies:
--- 1. RLS is enabled on public.users
--- 2. SELECT policy limits users to reading their own profile
--- 3. UPDATE policy exists but is restricted (cannot update server-controlled fields)
--- 4. INSERT policy is removed (Task 1 trigger handles creation)
--- 5. No DELETE policy (users cannot delete their own profile)
--- 6. Task 1 trigger and functions still work
--- 7. No orphans or data corruption
--- 8. Default values are set correctly
-
--- Security Guarantees:
--- - Authenticated users CANNOT modify: id, total_xp, rank, created_at, updated_at
--- - Authenticated users CANNOT read another user's profile
--- - Authenticated users CANNOT insert arbitrary profiles
--- - Authenticated users CANNOT delete their profile
--- - Backend service_role CAN modify XP and rank via award_xp() and other functions
--- - Backend service_role CAN create profiles via manual INSERT (Task 1 trigger does this)
--- - Profile creation is atomic: auth.users ↔ public.users 1:1 invariant maintained
+--
+-- This file contains executable structural and data-integrity tests:
+--   Tests 1-12 : Policy, schema, trigger, and function verification (12 tests)
+--   Tests 13-16: Data integrity checks (4 tests)
+--   Total      : 16 executable tests
+--
+-- For executable attack/permission tests, see users_column_security_tests.sql.
+--
+-- Security guarantees verified across both files:
+--   - Authenticated users CANNOT modify: id, total_xp, rank, created_at, updated_at
+--   - Authenticated users CANNOT read another user's profile
+--   - Authenticated users CANNOT insert arbitrary profiles
+--   - Authenticated users CANNOT delete their profile
+--   - Backend service_role CAN modify XP and rank via award_xp()
+--   - Profile creation trigger runs as SECURITY DEFINER with search_path = public

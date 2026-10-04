@@ -48,7 +48,10 @@ GRANT UPDATE(name) ON public.users TO authenticated;
 -- PostgREST and RLS will handle row-level filtering.
 
 GRANT SELECT ON public.users TO authenticated;
-GRANT INSERT ON public.users TO authenticated;
+
+-- Note: INSERT privilege is NOT granted to authenticated role.
+-- Task 1 trigger (handle_new_user) is the authoritative profile creator
+-- and runs with SECURITY DEFINER (postgres role) privileges.
 
 -- ============================================================================
 -- STEP 4: VERIFY postgres ROLE HAS FULL PRIVILEGES
