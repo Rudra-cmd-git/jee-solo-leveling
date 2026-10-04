@@ -10,23 +10,79 @@
 -- ============================================================================
 
 -- TEST S1: Verify RLS is enabled on public.users
-SELECT
-    schemaname,
-    tablename,
-    rowsecurity as rls_enabled
-FROM pg_tables
-WHERE tablename = 'users' AND schemaname = 'public';
+DO $$
+DECLARE
+    v_rls_enabled BOOLEAN;
+BEGIN
+    SELECT rowsecurity INTO v_rls_enabled
+    FROM pg_tables
+    WHERE tablename = 'users' AND schemaname = 'public';
 
--- TEST S2: Verify RLS SELECT and UPDATE policies exist (not INSERT)
-SELECT
-    policyname,
-    permissive,
-    cmd as operation,
-    roles,
-    qual as using_expression
-FROM pg_policies
-WHERE tablename = 'users' AND schemaname = 'public'
-ORDER BY cmd, policyname;
+    IF v_rls_enabled IS NOT TRUE THEN
+        RAISE EXCEPTION 'FAIL: RLS is not enabled on public.users';
+    END IF;
+
+    RAISE NOTICE 'PASS: RLS is enabled on public.users';
+END $$;
+
+-- TEST S2: Verify RLS SELECT and UPDATE policies exist (not INSERT or DELETE)
+DO $$
+DECLARE
+    v_select_count INTEGER;
+    v_update_count INTEGER;
+    v_insert_count INTEGER;
+    v_delete_count INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_select_count
+    FROM pg_policies
+    WHERE tablename = 'users'
+      AND schemaname = 'public'
+      AND cmd = 'SELECT'
+      AND permissive = true;
+
+    SELECT COUNT(*)
+    INTO v_update_count
+    FROM pg_policies
+    WHERE tablename = 'users'
+      AND schemaname = 'public'
+      AND cmd = 'UPDATE'
+      AND permissive = true;
+
+    SELECT COUNT(*)
+    INTO v_insert_count
+    FROM pg_policies
+    WHERE tablename = 'users'
+      AND schemaname = 'public'
+      AND cmd = 'INSERT'
+      AND permissive = true;
+
+    SELECT COUNT(*)
+    INTO v_delete_count
+    FROM pg_policies
+    WHERE tablename = 'users'
+      AND schemaname = 'public'
+      AND cmd = 'DELETE'
+      AND permissive = true;
+
+    IF v_select_count < 1 THEN
+        RAISE EXCEPTION 'FAIL: SELECT policy missing from public.users';
+    END IF;
+
+    IF v_update_count < 1 THEN
+        RAISE EXCEPTION 'FAIL: UPDATE policy missing from public.users';
+    END IF;
+
+    IF v_insert_count > 0 THEN
+        RAISE EXCEPTION 'FAIL: INSERT policy should not exist on public.users (Task 1 trigger handles creation)';
+    END IF;
+
+    IF v_delete_count > 0 THEN
+        RAISE EXCEPTION 'FAIL: DELETE policy should not exist on public.users';
+    END IF;
+
+    RAISE NOTICE 'PASS: RLS policies are correct: SELECT and UPDATE exist, INSERT and DELETE do not exist';
+END $$;
 
 -- TEST S3: Verify authenticated has NO INSERT privilege on public.users
 DO $$
