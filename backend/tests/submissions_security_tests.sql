@@ -58,6 +58,19 @@ WHERE table_name = 'submissions'
   AND privilege_type = 'UPDATE'
 ORDER BY column_name;
 
+-- TEST S4a: Verify Column INSERT Privileges on public.submissions for authenticated role
+-- Expected: INSERT privilege on ONLY (task_id, photo_url); NOT on (id, ai_verdict, submitted_at, verified_at)
+SELECT
+    table_name,
+    column_name,
+    privilege_type
+FROM information_schema.column_privileges
+WHERE table_name = 'submissions'
+  AND table_schema = 'public'
+  AND grantee = 'authenticated'
+  AND privilege_type = 'INSERT'
+ORDER BY column_name;
+
 -- ============================================================================
 -- SECTION 2: EXECUTABLE SECURITY ATTACK & PERMISSION TESTS
 -- ============================================================================
@@ -184,6 +197,34 @@ BEGIN
         RAISE EXCEPTION 'FAIL: Submission insertion with verified_at timestamp succeeded unexpectedly';
     EXCEPTION WHEN invalid_row_security_violation OR check_violation THEN
         RAISE NOTICE 'PASS: RLS WITH CHECK policy prevented submission insertion with verified_at timestamp';
+    END;
+
+    RESET ROLE;
+
+    RAISE NOTICE '=== TEST A6a: Blocked INSERT Regression Test (Forged submitted_at timestamp) ===';
+    SET ROLE authenticated;
+    PERFORM set_config('request.jwt.claim.sub', v_user_1::text, true);
+
+    BEGIN
+        INSERT INTO public.submissions (task_id, photo_url, submitted_at)
+        VALUES (v_task_1_id, 'https://example.com/forged_submitted.jpg', NOW() - INTERVAL '1 day');
+        RAISE EXCEPTION 'FAIL: Submission insertion with forged submitted_at timestamp succeeded unexpectedly';
+    EXCEPTION WHEN insufficient_privilege THEN
+        RAISE NOTICE 'PASS: Column-level privilege denied authenticated INSERT on submitted_at';
+    END;
+
+    RESET ROLE;
+
+    RAISE NOTICE '=== TEST A6b: Blocked INSERT Regression Test (Forged submission ID) ===';
+    SET ROLE authenticated;
+    PERFORM set_config('request.jwt.claim.sub', v_user_1::text, true);
+
+    BEGIN
+        INSERT INTO public.submissions (id, task_id, photo_url)
+        VALUES ('99999999-9999-4999-a999-999999999999', v_task_1_id, 'https://example.com/forged_id.jpg');
+        RAISE EXCEPTION 'FAIL: Submission insertion with explicitly provided id succeeded unexpectedly';
+    EXCEPTION WHEN insufficient_privilege THEN
+        RAISE NOTICE 'PASS: Column-level privilege denied authenticated INSERT on id';
     END;
 
     RESET ROLE;
