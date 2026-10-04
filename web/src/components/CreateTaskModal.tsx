@@ -37,17 +37,35 @@ export default function CreateTaskModal({
     }
 
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: user.id,
+      // Get the current session to retrieve the access token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setError('Failed to get authentication token');
+        setIsLoading(false);
+        return;
+      }
+
+      // Call the backend API instead of direct Supabase insert
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           title,
           subject,
-          xp_value: parseInt(xpValue.toString()),
-          status: 'pending',
-        });
+          xpValue: parseInt(xpValue.toString()),
+        }),
+      });
 
-      if (supabaseError) throw supabaseError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create task');
+      }
 
       // Close modal and refresh tasks
       onClose();

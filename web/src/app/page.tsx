@@ -92,15 +92,32 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+      // Get the current session to retrieve the access token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (error) throw error;
-      setTasks((data ?? []) as Task[]);
+      if (!session?.access_token) {
+        console.error('Failed to get authentication token');
+        return;
+      }
+
+      // Call the backend API instead of direct Supabase query
+      const response = await fetch('/api/tasks?status=pending&sortBy=created', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch tasks');
+      }
+
+      const result = await response.json();
+      setTasks((result.tasks ?? []) as Task[]);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     }
