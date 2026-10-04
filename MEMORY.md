@@ -1,1 +1,0 @@
-- [Backend Documentation](backend/README.md) — Database migrations, architecture documentation, and test suite details

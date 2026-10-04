@@ -205,7 +205,7 @@ FROM public.users;
 -- The attack tests (role-switching, permission denial, cross-user blocking)
 -- are implemented as executable DO $$ blocks in:
 --
---   backend/tests/tests/users_column_security_tests.sql
+--   backend/tests/users_column_security_tests.sql
 --
 -- That file contains tests A1-A10 which cover:
 --   - Own name update (allowed)

@@ -25,34 +25,25 @@ The user profile creation system was repaired to eliminate a race condition:
 - No new dependencies or breaking changes
 - No impact on your frontend code or workflows
 
-## Backend Documentation
-
-- **`docs/PROFILE_CREATION_FIX.md`** — Complete architecture guide and security analysis
-
 ## Database Migrations
 
-Located in `migrations/`:
+Located in `supabase/migrations/`:
 
-1. **`002_enhance_profile_creation_trigger.sql`**
-   - Enhances the profile creation trigger with safety improvements
-   - Adds explicit search_path and error handling
-   - Does NOT change existing functionality, only makes it safer
+1. **`001_init_schema.sql`** — Initial schema setup, RLS policies, secure XP award function
+2. **`002_enhance_profile_creation_trigger.sql`** — Profile creation trigger with explicit search_path
+3. **`003_backfill_missing_profiles.sql`** — Backfills missing user profiles
+4. **`004_lock_down_users_rls.sql`** — Restricted RLS UPDATE policy
+5. **`005_enforce_users_column_security.sql`** — PostgreSQL column-level privileges for public.users
 
-2. **`003_backfill_missing_profiles.sql`**
-   - Safely backfills profiles for any existing orphaned auth users
-   - Idempotent (can run multiple times)
-   - Only creates missing profiles, never overwrites existing ones
-
-**To deploy**: Apply these migrations to your Supabase project in order.
+**To deploy**: Apply migrations in `supabase/migrations/` in order.
 
 ## Testing
 
 Located in `tests/`:
 
-- **`profile_creation_tests.sql`** — Comprehensive SQL test suite
-  - 10+ automated tests covering all components
-  - Manual test scenarios
-  - Run in Supabase SQL editor to verify deployment
+- **`profile_creation_tests.sql`** — Profile creation trigger test suite
+- **`users_column_security_tests.sql`** — Executable column security & RLS test suite
+- **`users_rls_security_tests.sql`** — Structural verification & data integrity test suite
 
 ## Key Points for Frontend
 
@@ -73,9 +64,7 @@ Located in `tests/`:
 
 ## Questions?
 
-- Frontend questions about the auth.ts change? See the change summary above.
-- Backend-specific questions? See the documentation files in `docs/`.
-- Database schema questions? See `docs/PROFILE_CREATION_FIX.md` or run the test suite.
+- Database schema questions? See `supabase/migrations/` or run the test suite in `tests/`.
 
 ---
 
