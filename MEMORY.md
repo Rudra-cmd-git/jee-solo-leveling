@@ -1,2 +1,1 @@
-- [Task 2 Completion](backend/docs/TASK_2_AUDIT.md) — Complete security audit verifying all 11 requirements met, comprehensive threat model analysis
-- [Task 2 Report](TASK_2_COMPLETION_REPORT.md) — Detailed implementation report with migrations, tests, security guarantees, and deployment instructions
+- [Backend Documentation](backend/README.md) — Database migrations, architecture documentation, and test suite details

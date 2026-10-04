@@ -28,9 +28,6 @@ The user profile creation system was repaired to eliminate a race condition:
 ## Backend Documentation
 
 - **`docs/PROFILE_CREATION_FIX.md`** — Complete architecture guide and security analysis
-- **`docs/IMPLEMENTATION_REPORT.md`** — Full audit results and deployment guide
-- **`docs/PRIORITY_0_COMPLETION.md`** — Executive summary
-- **`docs/COMPLETION_CHECKLIST.md`** — Verification checklist
 
 ## Database Migrations
 
