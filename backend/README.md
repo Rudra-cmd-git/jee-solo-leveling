@@ -34,6 +34,7 @@ Located in `supabase/migrations/`:
 3. **`003_backfill_missing_profiles.sql`** — Backfills missing user profiles
 4. **`004_lock_down_users_rls.sql`** — Restricted RLS UPDATE policy
 5. **`005_enforce_users_column_security.sql`** — PostgreSQL column-level privileges for public.users
+6. **`006_lock_down_tasks_rls.sql`** — Restricted RLS policies & column privileges for public.tasks
 
 **To deploy**: Apply migrations in `supabase/migrations/` in order.
 
@@ -44,6 +45,7 @@ Located in `tests/`:
 - **`profile_creation_tests.sql`** — Profile creation trigger test suite
 - **`users_column_security_tests.sql`** — Executable column security & RLS test suite
 - **`users_rls_security_tests.sql`** — Structural verification & data integrity test suite
+- **`tasks_security_tests.sql`** — Executable tasks RLS & column security test suite
 
 ## Key Points for Frontend
 
