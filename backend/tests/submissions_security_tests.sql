@@ -60,16 +60,27 @@ ORDER BY column_name;
 
 -- TEST S4a: Verify Column INSERT Privileges on public.submissions for authenticated role
 -- Expected: INSERT privilege on ONLY (task_id, photo_url); NOT on (id, ai_verdict, submitted_at, verified_at)
-SELECT
-    table_name,
-    column_name,
-    privilege_type
-FROM information_schema.column_privileges
-WHERE table_name = 'submissions'
-  AND table_schema = 'public'
-  AND grantee = 'authenticated'
-  AND privilege_type = 'INSERT'
-ORDER BY column_name;
+DO $$
+DECLARE
+    v_insert_columns TEXT[];
+BEGIN
+    SELECT ARRAY_AGG(column_name ORDER BY column_name)
+    INTO v_insert_columns
+    FROM information_schema.column_privileges
+    WHERE table_schema = 'public'
+      AND table_name = 'submissions'
+      AND grantee = 'authenticated'
+      AND privilege_type = 'INSERT';
+
+    IF v_insert_columns IS DISTINCT FROM ARRAY['photo_url', 'task_id']::TEXT[] THEN
+        RAISE EXCEPTION
+            'FAIL: authenticated INSERT privileges are incorrect. Expected [photo_url, task_id], actual: %',
+            v_insert_columns;
+    END IF;
+
+    RAISE NOTICE
+        'PASS: authenticated INSERT privilege is restricted exactly to task_id and photo_url';
+END $$;
 
 -- ============================================================================
 -- SECTION 2: EXECUTABLE SECURITY ATTACK & PERMISSION TESTS
@@ -152,8 +163,9 @@ BEGIN
     SET ROLE authenticated;
     PERFORM set_config('request.jwt.claim.sub', v_user_1::text, true);
 
-    INSERT INTO public.submissions (id, task_id, photo_url, ai_verdict)
-    VALUES (v_new_sub_id, v_task_1_id, 'https://example.com/proof_new.jpg', 'pending');
+    INSERT INTO public.submissions (task_id, photo_url)
+    VALUES (v_task_1_id, 'https://example.com/proof_new.jpg')
+    RETURNING id INTO v_new_sub_id;
 
     RAISE NOTICE 'PASS: User 1 successfully created pending submission for own task';
 
