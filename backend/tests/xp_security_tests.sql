@@ -252,42 +252,62 @@ BEGIN
     RESET ROLE;
 
     -- ========================================================================
-    -- TEST A6: Trusted backend can award XP successfully
+    -- TEST A6: Service role can award XP successfully
     -- ========================================================================
 
-    RAISE NOTICE '=== TEST A6: Allowed XP Award (Trusted backend awarding XP) ===';
-    -- Already running as postgres (default after RESET ROLE)
+    RAISE NOTICE '=== TEST A6: Allowed XP Award (Service role awarding XP) ===';
 
     -- Record initial XP
     SELECT total_xp INTO v_initial_xp FROM public.users WHERE id = v_user_1;
 
-    -- Award XP through secure function
+    -- Switch to service_role to award XP through secure function
+    SET ROLE service_role;
+
+    -- Award XP through secure function as service_role
     SELECT award_xp(v_user_1, 100, 'Task completed');
 
     -- Check updated XP
     SELECT total_xp INTO v_current_xp FROM public.users WHERE id = v_user_1;
 
     IF v_current_xp = v_initial_xp + 100 THEN
-        RAISE NOTICE 'PASS: Trusted backend successfully awarded 100 XP (% -> %)', v_initial_xp, v_current_xp;
+        RAISE NOTICE 'PASS: Service role successfully awarded 100 XP (% -> %)', v_initial_xp, v_current_xp;
     ELSE
         RAISE EXCEPTION 'FAIL: XP not updated correctly (% -> %, expected +100)', v_initial_xp, v_current_xp;
     END IF;
 
+    -- Return to postgres for remaining tests
+    SET ROLE postgres;
+
     -- ========================================================================
-    -- TEST A7: XP accounting consistency
+    -- TEST A7: XP accounting consistency (ledger matches total_xp)
     -- ========================================================================
 
-    RAISE NOTICE '=== TEST A7: Consistency Check (XP log matches users.total_xp increase) ===';
+    RAISE NOTICE '=== TEST A7: Consistency Check (XP ledger matches total_xp) ===';
 
-    -- Count xp_log entries for this user
-    SELECT COUNT(*) INTO v_log_count FROM public.xp_log WHERE user_id = v_user_1;
+    DECLARE
+        v_total_xp_current INTEGER;
+        v_xp_log_sum INTEGER;
+    BEGIN
+        -- Get current total_xp for test user
+        SELECT total_xp INTO v_total_xp_current FROM public.users WHERE id = v_user_1;
 
-    -- Should have exactly 1 entry (from the award above)
-    IF v_log_count = 1 THEN
-        RAISE NOTICE 'PASS: Exactly one xp_log entry for user';
-    ELSE
-        RAISE EXCEPTION 'FAIL: Expected 1 xp_log entry, found %', v_log_count;
-    END IF;
+        -- Get sum of all xp_change entries for test user
+        SELECT COALESCE(SUM(xp_change), 0) INTO v_xp_log_sum FROM public.xp_log WHERE user_id = v_user_1;
+
+        -- Verify they match
+        IF v_total_xp_current = v_xp_log_sum THEN
+            RAISE NOTICE 'PASS: users.total_xp (%) equals SUM(xp_log.xp_change) (%)', v_total_xp_current, v_xp_log_sum;
+        ELSE
+            RAISE EXCEPTION 'FAIL: XP mismatch - total_xp=% but xp_log_sum=% (should be equal)', v_total_xp_current, v_xp_log_sum;
+        END IF;
+
+        -- Also verify the expected amount is in the ledger
+        IF v_xp_log_sum >= 100 THEN
+            RAISE NOTICE 'PASS: XP log contains expected award amount (sum=%)', v_xp_log_sum;
+        ELSE
+            RAISE EXCEPTION 'FAIL: XP log sum (%) is less than expected award (100)', v_xp_log_sum;
+        END IF;
+    END;
 
     -- ========================================================================
     -- TEST A8: Cannot award XP to arbitrary users through authenticated
