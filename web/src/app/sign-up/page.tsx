@@ -33,27 +33,27 @@ export default function SignUpPage() {
       await signUp(email, password, name);
       // After sign up, redirect to sign in page for verification
       router.push('/sign-in');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-6 p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center">Create Account</h2>
+    <div className="min-h-screen flex items-center justify-center glass-panel p-6">
+      <div className="w-full max-w-md">
+        <h2 className="text-2xl font-bold text-orbitron text-center">Create Account</h2>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-500 px-4 py-3 rounded">
+          <div className="bg-destructive/20 border border-destructive/30 text-destructive px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-muted-foreground font-medium">
               Name
             </label>
             <input
@@ -62,13 +62,13 @@ export default function SignUpPage() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
               disabled={isLoading}
             />
           </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-muted-foreground font-medium">
               Email
             </label>
             <input
@@ -77,13 +77,13 @@ export default function SignUpPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
               disabled={isLoading}
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-muted-foreground font-medium">
               Password
             </label>
             <input
@@ -93,7 +93,7 @@ export default function SignUpPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
               disabled={isLoading}
             />
           </div>
@@ -101,15 +101,15 @@ export default function SignUpPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full glowing-border px-6 py-3 text-primary font-medium hover:bg-primary/20"
           >
             {isLoading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
 
-        <div className="text-sm text-gray-600 text-center">
+        <div className="text-sm text-muted-foreground text-center">
           Already have an account?{' '}
-          <a href="/sign-in" className="text-blue-600 hover:underline">
+          <a href="/sign-in" className="text-primary hover:text-primary/80">
             Sign in
           </a>
         </div>

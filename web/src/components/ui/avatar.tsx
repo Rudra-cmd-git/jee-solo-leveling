@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { clsx, type ClassValue } from 'clsx';
+import Image from 'next/image';
+import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 export function avatar(
@@ -10,19 +11,21 @@ export function avatar(
     src,
     alt,
     size = 40,
+    className: customClassName,
     ...props
-  }: React.ImgHTMLAttributes<HTMLImageElement> & {
+  }: Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'width' | 'height'> & {
+    src?: string;
     size?: number;
     alt?: string;
   }
 ) {
   return (
-    <img
+    <Image
       src={src ?? `/avatars/${Math.floor(Math.random() * 10)}.png`}
       alt={alt ?? 'User avatar'}
       width={size}
       height={size}
-      className={twMerge('h-{size} w-{size} rounded-full object-cover border border-border/50 system', clsx(props.className))}
+      className={twMerge('rounded-full object-cover border border-border/50 system', clsx(customClassName))}
       {...props}
     />
   );

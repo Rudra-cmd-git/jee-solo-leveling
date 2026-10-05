@@ -2,8 +2,7 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ModalContent, ModalFooter, ModalHeader, ModalTitle, ModalDescription } from '@/components/ui/modal';
+import { ModalContent, ModalHeader, ModalTitle, ModalDescription } from '@/components/ui/modal';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -70,8 +69,8 @@ export default function CreateTaskModal({
       // Close modal and refresh tasks
       onClose();
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create task');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task');
     } finally {
       setIsLoading(false);
     }
@@ -82,17 +81,19 @@ export default function CreateTaskModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="bg-white rounded-lg p-6 shadow-lg">
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>Create New Task</ModalTitle>
-              <ModalDescription>
+        <div className="glass-panel p-6">
+          <ModalContent className="pb-0">
+            <ModalHeader className="mb-4">
+              <ModalTitle className="text-2xl font-bold text-orbitron">
+                Create New Task
+              </ModalTitle>
+              <ModalDescription className="text-muted-foreground">
                 Define a study task to earn XP upon completion
               </ModalDescription>
             </ModalHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label htmlFor="title" className="text-muted-foreground font-medium">
                   Task Title
                 </label>
                 <input
@@ -101,12 +102,12 @@ export default function CreateTaskModal({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
                 />
               </div>
 
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label htmlFor="subject" className="text-muted-foreground font-medium">
                   Subject
                 </label>
                 <input
@@ -115,12 +116,12 @@ export default function CreateTaskModal({
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
                 />
               </div>
 
-              <div>
-                <label htmlFor="xpValue" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label htmlFor="xpValue" className="text-muted-foreground font-medium">
                   XP Value
                 </label>
                 <input
@@ -129,12 +130,12 @@ export default function CreateTaskModal({
                   value={xpValue}
                   onChange={(e) => setXpValue(parseInt(e.target.value) || 10)}
                   min="1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
                 />
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-500 px-4 py-3 rounded">
+                <div className="bg-destructive/20 border border-destructive/30 text-destructive px-4 py-3 rounded-lg">
                   {error}
                 </div>
               )}
@@ -143,14 +144,14 @@ export default function CreateTaskModal({
                 <Button
                   variant="outline"
                   onClick={onClose}
-                  size="sm"
+                  className="px-5 py-2.5 text-muted-foreground/50 border border-muted-foreground/30"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   isLoading={isLoading}
-                  size="sm"
+                  className="glowing-border px-5 py-3 text-primary font-medium hover:bg-primary/20"
                 >
                   Create Task
                 </Button>

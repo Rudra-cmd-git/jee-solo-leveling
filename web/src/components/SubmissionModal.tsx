@@ -2,10 +2,8 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ModalContent, ModalFooter, ModalHeader, ModalTitle, ModalDescription } from '@/components/ui/modal';
+import { ModalContent, ModalHeader, ModalTitle, ModalDescription } from '@/components/ui/modal';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
 
 interface SubmissionModalProps {
   isOpen: boolean;
@@ -32,7 +30,6 @@ export default function SubmissionModal({
     reasoning: string;
   } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,8 +137,8 @@ export default function SubmissionModal({
           reasoning: 'Verification service unavailable',
         });
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit proof');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit proof');
     } finally {
       setIsLoading(false);
       setVerifying(false);
@@ -153,17 +150,19 @@ export default function SubmissionModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="bg-white rounded-lg p-6 shadow-lg">
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>Submit Proof for {taskTitle}</ModalTitle>
-              <ModalDescription>
+        <div className="glass-panel p-6">
+          <ModalContent className="pb-0">
+            <ModalHeader className="mb-4">
+              <ModalTitle className="text-2xl font-bold text-orbitron">
+                Submit Proof for {taskTitle}
+              </ModalTitle>
+              <ModalDescription className="text-muted-foreground">
                 Describe your work and upload proof to earn +{taskXpValue} XP
               </ModalDescription>
             </ModalHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label htmlFor="description" className="text-muted-foreground font-medium">
                   Description
                 </label>
                 <textarea
@@ -171,12 +170,13 @@ export default function SubmissionModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
+                  placeholder="Describe your study work..."
                 />
               </div>
 
-              <div>
-                <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label htmlFor="photoUrl" className="text-muted-foreground font-medium">
                   Proof URL (Image Link)
                 </label>
                 <input
@@ -185,21 +185,21 @@ export default function SubmissionModal({
                   value={photoUrl}
                   onChange={(e) => setPhotoUrl(e.target.value)}
                   placeholder="Paste image URL here..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-secondary-card/50 border border-muted-foreground/20 rounded-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-muted-foreground"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground/50 mt-1">
                   In a full implementation, this would be a file upload to storage
                 </p>
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-500 px-4 py-3 rounded">
+                <div className="bg-destructive/20 border border-destructive/30 text-destructive px-4 py-3 rounded-lg">
                   {error}
                 </div>
               )}
 
               {verificationResult && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+                <div className="glass-panel p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-5 h-5">
                       {verificationResult.verdict === 'approved' && (
@@ -233,12 +233,12 @@ export default function SubmissionModal({
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3">
+              <div className="flex justify-end space-x-3 mt-6">
                 {verifying ? (
                   <Button
                     variant="outline"
                     onClick={onClose}
-                    size="sm"
+                    className="px-5 py-2.5 text-muted-foreground/50 border border-muted-foreground/30"
                   >
                     Closing...
                   </Button>
@@ -246,7 +246,7 @@ export default function SubmissionModal({
                   <Button
                     variant="outline"
                     onClick={onClose}
-                    size="sm"
+                    className="px-5 py-2.5 text-muted-foreground/50 border border-muted-foreground/30"
                   >
                     Close
                   </Button>
@@ -255,7 +255,7 @@ export default function SubmissionModal({
                   <Button
                     onClick={handleSubmit}
                     isLoading={isLoading}
-                    size="sm"
+                    className="glowing-border px-5 py-3 text-primary font-medium hover:bg-primary/20"
                   >
                     {isLoading ? 'Submitting...' : 'Submit Proof'}
                   </Button>
