@@ -79,11 +79,21 @@ Once a Next.js app is added, install `@supabase/supabase-js` and create its clie
 3. Create a new query
 4. Copy and paste the entire contents of `supabase/migrations/001_init_schema.sql`
 5. Run the query
+6. Repeat with `supabase/migrations/002_refurbishment.sql`
 
 #### Option 3: Using psql (if you have direct DB access)
 ```bash
 psql "postgresql://postgres:[YOUR_PASSWORD]@db.[YOUR_PROJECT_REF].supabase.co:5432/postgres" -f supabase/migrations/001_init_schema.sql
+psql "postgresql://postgres:[YOUR_PASSWORD]@db.[YOUR_PROJECT_REF].supabase.co:5432/postgres" -f supabase/migrations/002_refurbishment.sql
 ```
+
+## What migration 002 adds
+
+- **Profile auto-creation:** a trigger on `auth.users` inserts the matching `public.users` row (name from sign-up metadata). Without it, new accounts have no profile and the dashboard cannot load. Existing auth users are backfilled.
+- **Leaderboard view:** `public.leaderboard` (id, name, total_xp, rank, current_streak) readable by authenticated users. Under 001's policies the leaderboard query could only ever return your own row.
+- **Anti-cheat column locks:** authenticated users may update only `users.name` and `tasks.title/subject/xp_value`; they can no longer update `total_xp`, `rank`, streak fields, task `status`, or submission verdicts from the client.
+- **XP integrity:** task `xp_value` is capped at 500; `award_xp()` now also recomputes `rank` and maintains `current_streak`/`last_active_date`.
+- **Proof storage:** private `proofs` bucket; object paths are `<user_id>/<task_id>/<timestamp>-<file>` and storage policies restrict each player to their own folder. The service role (verification route) can read everything.
 
 ## Using the Secure XP Function
 
