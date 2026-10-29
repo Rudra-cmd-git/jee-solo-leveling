@@ -18,6 +18,72 @@
 --     with per-player folder policies.
 
 -- ------------------------------------------------------------------
+-- 0. Schema reconciliation
+-- Some early deployments were created from a draft with different
+-- columns (users.username instead of users.name, no updated_at /
+-- verified_at). Bring any such database up to the 001 shape
+-- additively — these are no-ops on a clean 001 database.
+-- ------------------------------------------------------------------
+-- Add missing columns FIRST: some draft deployments already have
+-- update_*_updated_at triggers installed, and those fire (and fail)
+-- on any UPDATE until the updated_at columns exist.
+ALTER TABLE public.users
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE public.tasks
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE public.submissions
+    ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS name TEXT;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'username'
+    ) THEN
+        UPDATE public.users SET name = COALESCE(name, username) WHERE name IS NULL;
+    END IF;
+END $$;
+
+UPDATE public.users SET name = 'Player' WHERE name IS NULL OR btrim(name) = '';
+ALTER TABLE public.users ALTER COLUMN name SET NOT NULL;
+
+-- The app maintains `name`; legacy draft columns (username/email) are not
+-- written by the app, so their NOT NULL constraints must not block inserts.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'username'
+    ) THEN
+        UPDATE public.users SET username = COALESCE(username, name) WHERE username IS NULL;
+        ALTER TABLE public.users ALTER COLUMN username DROP NOT NULL;
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'email'
+    ) THEN
+        ALTER TABLE public.users ALTER COLUMN email DROP NOT NULL;
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
+    FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON public.tasks;
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON public.tasks
+    FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+
+-- ------------------------------------------------------------------
 -- 1. New columns: streak tracking + submission notes
 -- ------------------------------------------------------------------
 ALTER TABLE public.users
