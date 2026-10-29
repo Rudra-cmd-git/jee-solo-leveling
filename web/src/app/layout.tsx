@@ -1,30 +1,27 @@
-import type { Metadata } from "next";
-import { Inter, Orbitron } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/orbitron';
 import { AuthProvider } from '@/lib/auth-context';
+import { ToastProvider } from '@/components/ui/toast';
 import * as React from 'react';
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const orbitron = Orbitron({
-  variable: "--font-orbitron",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "JEE Solo Leveling",
-  description: "Gamified JEE study tracker",
+  title: 'JEE Solo Leveling — Gamified JEE Study Tracker',
+  description:
+    'Turn JEE prep into quests. Create study tasks, submit proof, earn XP, rank up from E to S, and climb the leaderboard.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={`${inter.variable} ${orbitron.variable}`}>
-      <body>
+    <html lang="en" className="dark">
+      <body className="font-inter antialiased">
         <AuthProvider>
-          {children}
+          <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
       </body>
     </html>

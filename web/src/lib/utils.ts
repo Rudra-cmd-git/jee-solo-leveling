@@ -8,6 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 export const RANKS = ['E', 'D', 'C', 'B', 'A', 'S'] as const;
 export type Rank = typeof RANKS[number];
 
+/** Hard cap on a single task's XP. Mirrored by a CHECK constraint in
+ *  supabase migration 002 so players cannot print unlimited XP. */
+export const MAX_TASK_XP = 500;
+
+/** XP needed to reach each rank. Keep in sync with the rank calculation
+ *  inside public.award_xp() in supabase migration 002. */
 export const RANK_THRESHOLDS: Record<Rank, number> = {
   E: 0,
   D: 1000,

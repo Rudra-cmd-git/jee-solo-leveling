@@ -4,16 +4,12 @@
 
 @layer base {
   :root {
-    --background: #000000;
-    --foreground: #00ff88;
+    --background: #050807;
+    --foreground: #e8f5ee;
 
     --system-primary: #00ff88;
     --system-secondary: #8a2be2;
     --system-accent: #ff00ff;
-    --system-dark: #000000;
-    --system-darker: #000000;
-    --system-gray: #1a1a1a;
-    --system-light: #333333;
 
     --rank-E: #808080;
     --rank-D: #00ff00;
@@ -23,13 +19,6 @@
     --rank-S: #ff8c00;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #000000;
-      --foreground: #00ff88;
-    }
-  }
-
   html {
     height: 100%;
   }
@@ -37,45 +26,59 @@
   html,
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter);
+    font-family: 'Inter Variable', Inter, system-ui, sans-serif;
   }
 
   body {
-    @apply min-h-[100%] flex flex-col;
+    @apply min-h-screen flex flex-col;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(138, 43, 226, 0.18), transparent),
+      radial-gradient(ellipse 60% 40% at 90% 110%, rgba(0, 255, 136, 0.08), transparent);
+    background-attachment: fixed;
   }
 
   * {
-    @apply box-border m-0 p-0;
+    @apply box-border;
   }
 
   a {
     @apply text-inherit no-underline;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-orbitron;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: rgba(0, 255, 136, 0.3);
+    color: #e8f5ee;
   }
 }
 
 @layer components {
   /* Glass panel effect */
   .glass-panel {
-    @apply bg-black/30 backdrop-blur border border-primary/20 rounded-xl shadow-glass;
+    @apply bg-black/40 backdrop-blur border border-primary/20 rounded-xl shadow-glass;
   }
 
-  /* Glowing border effect */
+  /* Glowing border effect (gradient halo on hover / focus-within) */
   .glowing-border {
-    @apply relative border-transparent rounded-xl bg-background;
+    @apply relative rounded-xl;
   }
 
   .glowing-border::after {
-    @apply content-[''] absolute -inset-2 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent -z-1 opacity-0 transition-opacity duration-300;
+    @apply content-[''] absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent -z-10 opacity-0 transition-opacity duration-300 pointer-events-none;
   }
 
   .glowing-border:hover::after,
   .glowing-border:focus-within::after {
-    @apply opacity-50;
+    @apply opacity-40;
   }
 
   /* System label style */
@@ -87,82 +90,41 @@
     @apply content-['[SYSTEM]'] font-orbitron text-xs opacity-80 mr-1;
   }
 
-  /* Rank badge styles */
+  /* Rank badge styles (the badge component renders the letter itself) */
   .rank-badge {
-    @apply inline-flex items-center gap-1 text-sm font-semibold uppercase text-xs px-3 py-0.5 rounded font-orbitron;
+    @apply inline-flex items-center justify-center gap-1 font-semibold uppercase px-2.5 py-0.5 rounded font-orbitron border;
   }
 
-  .rank-badge.E {
-    @apply bg-gray-500/20 text-gray-400;
+  .rank-badge-E {
+    @apply bg-gray-500/20 text-gray-300 border-gray-500/40;
   }
-  .rank-badge.D {
-    @apply bg-green-500/20 text-green-400;
+  .rank-badge-D {
+    @apply bg-green-500/20 text-green-300 border-green-500/40;
   }
-  .rank-badge.C {
-    @apply bg-blue-500/20 text-blue-400;
+  .rank-badge-C {
+    @apply bg-blue-500/20 text-blue-300 border-blue-500/40;
   }
-  .rank-badge.B {
-    @apply bg-violet-500/20 text-violet-400;
+  .rank-badge-B {
+    @apply bg-violet-500/20 text-violet-300 border-violet-500/40;
   }
-  .rank-badge.A {
-    @apply bg-yellow-500/20 text-yellow-400;
+  .rank-badge-A {
+    @apply bg-yellow-500/20 text-yellow-300 border-yellow-500/40;
   }
-  .rank-badge.S {
-    @apply bg-orange-500/20 text-orange-400;
-  }
-
-  .rank-badge.E::after {
-    @apply content-['E'];
-  }
-  .rank-badge.D::after {
-    @apply content-['D'];
-  }
-  .rank-badge.C::after {
-    @apply content-['C'];
-  }
-  .rank-badge.B::after {
-    @apply content-['B'];
-  }
-  .rank-badge.A::after {
-    @apply content-['A'];
-  }
-  .rank-badge.S::after {
-    @apply content-['S'];
+  .rank-badge-S {
+    @apply bg-orange-500/20 text-orange-300 border-orange-500/40;
   }
 
-  /* XP Bar styles */
-  .xp-bar {
+  /* XP bar */  .xp-bar {
     @apply w-full h-2 bg-white/10 rounded overflow-hidden mt-1;
   }
 
   .xp-bar-fill {
-    @apply h-full bg-gradient-to-r from-primary via-secondary rounded transition-all duration-1000 ease-out shadow-glow;
-  }
-
-  /* Toast styles */
-  .toast {
-    @apply fixed bottom-4 right-4 w-[300px] max-w-[400px] bg-black/80 backdrop-blur border border-primary/20 rounded-xl p-6 shadow-glass z-50 animate-slideUp;
-  }
-
-  .toast-header {
-    @apply flex justify-between items-center mb-4;
-  }
-
-  .toast-title {
-    @apply font-orbitron text-lg font-semibold text-primary;
-  }
-
-  .toast-close {
-    @apply bg-transparent border-none text-xl leading-none text-foreground opacity-70 hover:opacity-100;
-  }
-
-  .toast-content {
-    @apply text-foreground leading-relaxed;
+    @apply h-full bg-gradient-to-r from-primary to-secondary rounded transition-all duration-1000 ease-out shadow-glow;
   }
 
   /* Stat card */
   .stat-card {
-    @apply bg-black/20 backdrop-blur border border-primary/10 rounded-xl p-6 text-center transition-all duration-300 hover:bg-black/30 hover:-translate-y-1 hover:shadow-glow;
+    @apply bg-black/30 backdrop-blur border border-primary/10 rounded-xl p-5 text-center transition-all duration-300 hover:bg-black/40 hover:-translate-y-0.5 hover:shadow-glow;
   }
 
   .stat-value {
@@ -170,17 +132,11 @@
   }
 
   .stat-label {
-    @apply text-sm uppercase tracking-wider text-foreground/80;
+    @apply text-sm uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* Loading shimmer block */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-white/10;
   }
 }
-
-@layer utilities {
-  .animate-pulse {
-    animation: pulse 2s infinite;
-  }
-
-  .animate-slideUp {
-    animation: slideUp 0.3s ease-out;
-  }
-}
-

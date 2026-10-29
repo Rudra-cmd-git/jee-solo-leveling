@@ -1,364 +1,462 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import * as React from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  BookOpenCheck,
+  CheckCircle2,
+  Clock,
+  Flame,
+  Medal,
+  Plus,
+  ScrollText,
+  Swords,
+  Target,
+  Trophy,
+  XCircle,
+  Zap,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
-import { getRankProgress, formatNumber } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
-import SubmissionModal from '@/components/SubmissionModal';
+import { ensureProfile } from '@/lib/profile';
+import { getRankProgress, formatNumber, formatDate, cn } from '@/lib/utils';
+import type {
+  LeaderboardEntry,
+  Profile,
+  SubmissionWithTask,
+  Task,
+} from '@/lib/types';
+import { AppHeader } from '@/components/AppHeader';
+import { ConfigBanner } from '@/components/ConfigBanner';
 import CreateTaskModal from '@/components/CreateTaskModal';
+import SubmissionModal from '@/components/SubmissionModal';
+import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { RankBadge } from '@/components/ui/rank-badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/stat-card';
+import { SystemPanel } from '@/components/ui/system-panel';
+import { XPBar } from '@/components/ui/xp-bar';
+
+function VerdictChip({ verdict }: { verdict: SubmissionWithTask['ai_verdict'] }) {
+  if (verdict === 'approved') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/10 px-2 py-0.5 text-xs font-semibold text-green-300">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Verified
+      </span>
+    );
+  }
+  if (verdict === 'rejected') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-300">
+        <XCircle className="h-3.5 w-3.5" aria-hidden /> Rejected
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-semibold text-yellow-300">
+      <Clock className="h-3.5 w-3.5" aria-hidden /> Pending review
+    </span>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6" aria-busy="true">
+      <span className="sr-only">Loading your dashboard…</span>
+      <Skeleton className="h-36 w-full rounded-xl" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
+
+interface DashboardData {
+  tasks: Task[];
+  submissions: SubmissionWithTask[];
+  leaderboard: LeaderboardEntry[];
+}
+
+/** Pure fetcher: returns data, never touches component state. */
+async function fetchDashboardData(userId: string): Promise<DashboardData> {
+  const [tasksResult, submissionsResult, leaderboardResult] =
+    await Promise.all([
+      supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('submissions')
+        .select('*, tasks!inner (title, xp_value)')
+        .eq('tasks.user_id', userId)
+        .order('submitted_at', { ascending: false })
+        .limit(5),
+      (async (): Promise<LeaderboardEntry[]> => {
+        // Preferred: the safe `leaderboard` view from migration 002.
+        const view = await supabase
+          .from('leaderboard')
+          .select('*')
+          .order('total_xp', { ascending: false })
+          .limit(10);
+        if (!view.error && view.data) {
+          return view.data as unknown as LeaderboardEntry[];
+        }
+        // Fallback for databases still on migration 001 (own row only).
+        const fallback = await supabase
+          .from('users')
+          .select('id, name, total_xp, rank')
+          .order('total_xp', { ascending: false })
+          .limit(10);
+        return (fallback.data ?? []) as unknown as LeaderboardEntry[];
+      })(),
+    ]);
+
+  if (tasksResult.error) throw tasksResult.error;
+  if (submissionsResult.error) throw submissionsResult.error;
+
+  return {
+    tasks: (tasksResult.data ?? []) as unknown as Task[],
+    submissions: (submissionsResult.data ??
+      []) as unknown as SubmissionWithTask[],
+    leaderboard: leaderboardResult,
+  };
+}
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [profile, setProfile] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionWithTask[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [openSubmissionModal, setOpenSubmissionModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [openCreateTaskModal, setOpenCreateTaskModal] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  // Fetch user profile from public.users table
+  const applyData = useCallback(
+    (data: DashboardData, profileData: Profile | null) => {
+      setProfile(profileData);
+      setTasks(data.tasks);
+      setSubmissions(data.submissions);
+      setLeaderboard(data.leaderboard);
+      setLoadError(null);
+    },
+    [],
+  );
+
+  /** Manual refresh used after creating a quest / submitting proof. */
+  const loadAll = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [profileData, data] = await Promise.all([
+        ensureProfile(user),
+        fetchDashboardData(user.id),
+      ]);
+      applyData(data, profileData);
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : 'Could not load your dashboard. Check your Supabase setup and migrations.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, applyData]);
+
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/sign-in');
       return;
     }
-
-    if (user) {
-      setIsLoading(true);
-
-      void (async () => {
-        try {
-          await Promise.all([
-            fetchProfile(),
-            fetchTasks(),
-            fetchSubmissions(),
-            fetchLeaderboard(),
-          ]);
-        } finally {
-          setIsLoading(false);
-        }
-      })();
-    } else {
-      setProfile(null);
-      setTasks([]);
-      setSubmissions([]);
-      setLeaderboard([]);
-      setIsLoading(false);
-    }
-  }, [user, loading, router]);
-
-  const fetchProfile = async () => {
     if (!user) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    let cancelled = false;
+    Promise.all([ensureProfile(user), fetchDashboardData(user.id)])
+      .then(([profileData, data]) => {
+        if (!cancelled) applyData(data, profileData);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.error('Error loading dashboard:', error);
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : 'Could not load your dashboard. Check your Supabase setup and migrations.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
 
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading, router, applyData]);
 
-  const fetchTasks = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    }
-  };
-
-  const fetchSubmissions = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select(`
-          *,
-          tasks!inner (
-            title,
-            xp_value
-          )
-        `)
-        .eq('tasks.user_id', user.id)
-        .order('submitted_at', { ascending: false })
-        .limit(5);
-
-      if (error) throw error;
-      setSubmissions(data);
-    } catch (error) {
-      console.error('Error fetching submissions:', error);
-    }
-  };
-
-  const fetchLeaderboard = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, total_xp, rank')
-        .order('total_xp', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setLeaderboard(data);
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-    }
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
+  if (loading || !user) {
+    return (
+      <>
+        <AppHeader profile={null} />
+        <DashboardSkeleton />
+      </>
+    );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  // If still loading data, show skeleton
-  if (isLoading && !profile) {
-    return <div>Loading dashboard...</div>;
-  }
-
-  const rankProgress = getRankProgress(profile?.total_xp || 0);
+  const rankProgress = getRankProgress(profile?.total_xp ?? 0);
+  const streak = profile?.current_streak ?? 0;
 
   return (
-    <div className="page">
-      <main className="main">
-        {/* Intro Section with User Info */}
-        <div className="intro">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
-              {profile?.name?.charAt(0) ?? 'U'}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">
-                Welcome back, {profile?.name || 'Studier'}!
-              </h1>
-              <p className="text-gray-600">
-                Rank: {profile?.rank || 'E'} • XP: {formatNumber(profile?.total_xp || 0)}
-              </p>
-            </div>
+    <>
+      <AppHeader profile={profile} />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+        <ConfigBanner />
+
+        {loadError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+          >
+            {loadError}
           </div>
+        )}
 
-          {/* Stats */}
-          <div className="flex flex-col sm:flex-row sm:space-x-4 mb-6">
-            <div className="flex-1 bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-500">Next Rank</h3>
-              <p className="text-xl font-bold">{rankProgress.nextRank ?? 'MAX'}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {rankProgress.xpToNextRank > 0
-                  ? `${formatNumber(rankProgress.xpToNextRank)} XP to go`
-                  : 'Maximum rank achieved!'}
-              </p>
-            </div>
-
-            <div className="flex-1 bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-500">Progress</h3>
-              <p className="text-xl font-bold">{rankProgress.progress.toFixed(0)}%</p>
-              <p className="text-sm text-gray-500 mt-1">
-                To next rank
-              </p>
-            </div>
-
-            <div className="flex-1 bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-500">Tasks Today</h3>
-              <p className="text-xl font-bold">{tasks.length}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Pending tasks
-              </p>
-            </div>
-
-            <div className="flex-1 bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-500">Streak</h3>
-              <p className="text-xl font-bold">0</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Days in a row
-              </p>
-            </div>
-          </div>
-
-          {/* Pending Tasks */}
-          {tasks.length > 0 ? (
-            <>
-              <h2 className="text-xl font-bold mb-4">Pending Tasks</h2>
-              <div className="space-y-3">
-                {tasks.map((task) => (
-                  <div key={task.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold">{task.title}</h3>
-                        <p className="text-gray-600">{task.subject}</p>
-                        <p className="text-green-600 font-medium mt-1">
-                          +{task.xp_value} XP
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setOpenSubmissionModal(true);
-                        }}
-                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                      >
-                        Submit Proof
-                      </button>
-                    </div>
+        {isLoading && !profile ? (
+          <DashboardSkeleton />
+        ) : (
+          <div className="space-y-6">
+            {/* Player banner */}
+            <SystemPanel title="Player Status">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                <Avatar name={profile?.name} size={64} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl font-bold text-foreground">
+                      {profile?.name ?? 'Player'}
+                    </h1>
+                    <RankBadge rank={profile?.rank ?? 'E'} withLabel />
                   </div>
-                ))}
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Total XP:{' '}
+                    <span className="font-orbitron text-primary">
+                      {formatNumber(profile?.total_xp ?? 0)}
+                    </span>
+                    {streak > 0 && (
+                      <>
+                        {' · '}
+                        <Flame className="mb-0.5 inline h-4 w-4 text-orange-400" aria-hidden />{' '}
+                        {streak}-day streak
+                      </>
+                    )}
+                  </p>
+                  <XPBar xp={profile?.total_xp ?? 0} className="mt-4" />
+                </div>
               </div>
-            </>
-          ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No pending tasks. Create a new task to get started!</p>
-            </div>
-          )}
+            </SystemPanel>
 
-          {/* Recent Submissions */}
-          {submissions.length > 0 ? (
-            <>
-              <h2 className="text-xl font-bold mb-4 mt-6">Recent Submissions</h2>
-              <div className="space-y-3">
-                {submissions.map((submission) => (
-                  <div key={submission.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold">{submission.tasks.title}</h3>
-                        <p className="text-gray-600 mt-1">
-                          {new Date(submission.submitted_at).toLocaleDateString()}
-                        </p>
-                        {submission.ai_verdict === 'approved' && (
-                          <p className="text-green-600 font-medium mt-1">
-                            Verified +{submission.tasks.xp_value} XP
-                          </p>
-                        )}
-                        {submission.ai_verdict === 'rejected' && (
-                          <p className="text-red-600 font-medium mt-1">
-                            Rejected
-                          </p>
-                        )}
-                        {submission.ai_verdict === 'pending' && (
-                          <p className="text-yellow-600 font-medium mt-1">
-                            Pending Review
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg mt-6">
-              <p className="text-gray-500">No submissions yet. Submit proof for your tasks to see them here!</p>
-            </div>
-          )}
-
-          {/* Leaderboard */}
-          {leaderboard.length > 0 ? (
-            <>
-              <h2 className="text-xl font-bold mb-4 mt-6">Leaderboard</h2>
-              <div className="space-y-3">
-                {leaderboard.map((user, index) => (
-                  <div key={user.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gray-200 rounded-flex items-center justify-center text-sm font-medium">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <h3 className="font-bold">{user.name}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Rank: {user.rank} • {formatNumber(user.total_xp)} XP
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg mt-6">
-              <p className="text-gray-500">No data available yet. Start completing tasks to appear on the leaderboard!</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row sm:space-x-4 mt-6">
-            <button
-              onClick={() => {
-                // For the general submit button, we could either:
-                // 1. Open a modal to select a task first, or
-                // 2. If there's only one task, use that
-                // For now, let's use the first task if available, or show an alert
-                if (tasks.length === 0) {
-                  alert('Please create a task first');
-                  return;
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard
+                title="Next Rank"
+                value={rankProgress.nextRank ?? 'MAX'}
+                sublabel={
+                  rankProgress.xpToNextRank > 0
+                    ? `${formatNumber(rankProgress.xpToNextRank)} XP to go`
+                    : 'Maximum rank achieved'
                 }
-                setSelectedTask(tasks[0]);
-                setOpenSubmissionModal(true);
-              }}
-              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Submit Proof
-            </button>
-            <button
-              onClick={() => {
-                setOpenCreateTaskModal(true);
-              }}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-            >
-              Create Task
-            </button>
-            <button
-              onClick={() => {
-                router.push('/profile');
-              }}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-            >
-              Profile
-            </button>
+                icon={<Target className="h-5 w-5" aria-hidden />}
+              />
+              <StatCard
+                title="Rank Progress"
+                value={`${rankProgress.progress.toFixed(0)}%`}
+                sublabel="To next rank"
+                icon={<Zap className="h-5 w-5" aria-hidden />}
+              />
+              <StatCard
+                title="Active Quests"
+                value={tasks.length}
+                sublabel="Awaiting proof"
+                icon={<Swords className="h-5 w-5" aria-hidden />}
+              />
+              <StatCard
+                title="Day Streak"
+                value={streak}
+                sublabel={streak === 1 ? 'Day in a row' : 'Days in a row'}
+                icon={<Flame className="h-5 w-5" aria-hidden />}
+              />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="space-y-6 lg:col-span-2">
+                {/* Active quests */}
+                <SystemPanel
+                  title="Active Quests"
+                  action={
+                    <Button size="sm" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-4 w-4" aria-hidden /> New Quest
+                    </Button>
+                  }
+                >
+                  {tasks.length > 0 ? (
+                    <ul className="space-y-3">
+                      {tasks.map((task) => (
+                        <li
+                          key={task.id}
+                          className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-black/30 p-4"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold text-foreground">
+                              {task.title}
+                            </p>
+                            <p className="mt-0.5 text-sm text-muted-foreground">
+                              {task.subject} · Created {formatDate(task.created_at)}
+                            </p>
+                            <p className="mt-1 font-orbitron text-sm text-primary">
+                              +{formatNumber(task.xp_value)} XP
+                            </p>
+                          </div>
+                          <Button size="sm" onClick={() => setSelectedTask(task)}>
+                            <BookOpenCheck className="h-4 w-4" aria-hidden />
+                            Submit Proof
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="py-8 text-center">
+                      <ScrollText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
+                      <p className="text-muted-foreground">
+                        No active quests. The System awaits your next move.
+                      </p>
+                      <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+                        <Plus className="h-4 w-4" aria-hidden /> Create your first quest
+                      </Button>
+                    </div>
+                  )}
+                </SystemPanel>
+
+                {/* Recent submissions */}
+                <SystemPanel title="Recent Proofs">
+                  {submissions.length > 0 ? (
+                    <ul className="space-y-3">
+                      {submissions.map((submission) => (
+                        <li
+                          key={submission.id}
+                          className="rounded-lg border border-border bg-black/30 p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="font-semibold text-foreground">
+                              {submission.tasks.title}
+                            </p>
+                            <VerdictChip verdict={submission.ai_verdict} />
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Submitted {formatDate(submission.submitted_at)}
+                            {submission.ai_verdict === 'approved' &&
+                              ` · +${formatNumber(submission.tasks.xp_value)} XP earned`}
+                          </p>
+                          {submission.ai_notes && (
+                            <p className="mt-1 text-sm text-muted-foreground italic">
+                              System: {submission.ai_notes}
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="py-6 text-center text-muted-foreground">
+                      No proof submitted yet. Complete a quest and show the System your work.
+                    </p>
+                  )}
+                </SystemPanel>
+              </div>
+
+              {/* Leaderboard */}
+              <SystemPanel title="Leaderboard" className="h-fit lg:sticky lg:top-24">
+                {leaderboard.length > 0 ? (
+                  <ol className="space-y-2">
+                    {leaderboard.map((entry, index) => (
+                      <li
+                        key={entry.id}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg border p-3',
+                          entry.id === user.id
+                            ? 'border-primary/50 bg-primary/10'
+                            : 'border-border bg-black/30',
+                        )}
+                      >
+                        <span className="flex w-7 shrink-0 items-center justify-center">
+                          {index < 3 ? (
+                            <Medal
+                              className={cn(
+                                'h-5 w-5',
+                                index === 0 && 'text-yellow-300',
+                                index === 1 && 'text-gray-300',
+                                index === 2 && 'text-amber-600',
+                              )}
+                              aria-hidden
+                            />
+                          ) : (
+                            <span className="font-orbitron text-sm text-muted-foreground">
+                              {index + 1}
+                            </span>
+                          )}
+                        </span>
+                        <Avatar name={entry.name} size={32} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {entry.name}
+                            {entry.id === user.id && (
+                              <span className="ml-2 text-xs text-primary">(You)</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatNumber(entry.total_xp)} XP
+                            {(entry.current_streak ?? 0) > 0 &&
+                              ` · ${entry.current_streak}d streak`}
+                          </p>
+                        </div>
+                        <RankBadge rank={entry.rank} size="sm" />
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="py-6 text-center">
+                    <Trophy className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
+                    <p className="text-muted-foreground">
+                      No hunters ranked yet. Earn XP to claim the top spot.
+                    </p>
+                  </div>
+                )}
+              </SystemPanel>
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
-      {/* Submission Modal */}
+      <CreateTaskModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => void loadAll()}
+      />
+
       {selectedTask && (
         <SubmissionModal
-          isOpen={openSubmissionModal}
-          onClose={() => {
-            setOpenSubmissionModal(false);
-            setSelectedTask(null);
-          }}
-          taskId={selectedTask.id}
-          taskTitle={selectedTask.title}
-          taskXpValue={selectedTask.xp_value}
+          isOpen
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onSubmitted={() => void loadAll()}
         />
       )}
-
-      {/* Create Task Modal */}
-      <CreateTaskModal
-        isOpen={openCreateTaskModal}
-        onClose={() => {
-          setOpenCreateTaskModal(false);
-        }}
-      />
-    </div>
+    </>
   );
 }

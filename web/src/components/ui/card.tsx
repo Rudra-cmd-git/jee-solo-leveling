@@ -1,20 +1,22 @@
 'use client';
 
 import * as React from 'react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 
-export function card(
-  className: string,
-  { ...props }: React.HTMLAttributes<HTMLDivElement>
-) {
-  return (
-    <div
-      className={twMerge('rounded-xl border bg-card text-card-foreground shadow-sm system', clsx(props.className))}
-      {...props}
-    />
-  );
-}
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      'rounded-xl border border-border bg-card text-card-foreground shadow-sm',
+      className,
+    )}
+    {...props}
+  />
+));
+Card.displayName = 'Card';
 
-card.displayName = 'card';
-export default card;
+export { Card };
+export default Card;

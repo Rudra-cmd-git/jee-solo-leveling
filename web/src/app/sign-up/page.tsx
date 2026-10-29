@@ -1,18 +1,27 @@
 'use client';
 
+import * as React from 'react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { signUp } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
+import { AuthShell } from '@/components/AuthShell';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/toast';
 
 export default function SignUpPage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     if (!loading && user) {
@@ -20,100 +29,162 @@ export default function SignUpPage() {
     }
   }, [user, loading, router]);
 
-  if (loading || user) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
-    setIsLoading(true);
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      await signUp(email, password, name);
-      // After sign up, redirect to sign in page for verification
+      await signUp(email, password, name.trim());
+      toast({
+        title: 'Player registered',
+        description:
+          'If email confirmation is enabled, confirm your inbox first — then sign in to start your first quest.',
+        variant: 'success',
+      });
       router.push('/sign-in');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Sign-up failed. Try again.',
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (loading || user) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-4">
+        <div className="w-full max-w-md space-y-4" aria-busy="true">
+          <Skeleton className="mx-auto h-10 w-40" />
+          <Skeleton className="h-72 w-full rounded-xl" />
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-6 p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center">Create Account</h2>
+    <AuthShell
+      eyebrow="NEW PLAYER"
+      title="Begin your ascent"
+      subtitle="Create an account and accept your first quest."
+      footerPrompt="Already a player?"
+      footerLinkLabel="Sign in"
+      footerHref="/sign-in"
+    >
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+        >
+          {error}
+        </div>
+      )}
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-500 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Name
-            </label>
-            <input
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-foreground mb-1"
+          >
+            Player name
+          </label>
+          <div className="relative">
+            <UserRound
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary"
+              aria-hidden
+            />
+            <Input
               id="name"
               type="text"
+              autoComplete="name"
               required
+              maxLength={60}
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. Sung Jinwoo"
               disabled={isLoading}
+              className="pl-10"
             />
           </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This is the name shown on the leaderboard.
+          </p>
+        </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-foreground mb-1"
+          >
+            Email
+          </label>
+          <div className="relative">
+            <Mail
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary"
+              aria-hidden
+            />
+            <Input
               id="email"
               type="email"
+              autoComplete="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
               disabled={isLoading}
+              className="pl-10"
             />
           </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              disabled={isLoading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {isLoading ? 'Creating account...' : 'Sign Up'}
-          </button>
-        </form>
-
-        <div className="text-sm text-gray-600 text-center">
-          Already have an account?{' '}
-          <a href="/sign-in" className="text-blue-600 hover:underline">
-            Sign in
-          </a>
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-foreground mb-1"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <LockKeyhole
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary"
+              aria-hidden
+            />
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 6 characters"
+              disabled={isLoading}
+              className="pl-10 pr-11"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <Button type="submit" isLoading={isLoading} className="w-full" size="lg">
+          {isLoading ? 'Creating account…' : 'Create Account'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

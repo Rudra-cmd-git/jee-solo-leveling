@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { getRankProgress } from '@/lib/utils';
+import { getRankProgress, formatNumber, cn } from '@/lib/utils';
 
 interface XPBarProps {
   xp: number;
@@ -9,34 +9,38 @@ interface XPBarProps {
   showText?: boolean;
 }
 
-export function XPBar({
-  xp,
-  className = '',
-  showText = true,
-}: XPBarProps) {
-  const { progress, currentRank, nextRank, xpToNextRank } = getRankProgress(xp);
+export function XPBar({ xp, className, showText = true }: XPBarProps) {
+  const { progress, currentRank, nextRank, xpToNextRank } =
+    getRankProgress(xp);
 
   return (
-    <div className={`${className} w-full`}>
+    <div className={cn('w-full', className)}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-orbitron text-primary">
-          Rank: {currentRank}{nextRank ? ` → ${nextRank}` : ' (MAX)'}
-        </div>
+        <span className="text-sm font-orbitron text-primary">
+          Rank {currentRank}
+          {nextRank ? ` → ${nextRank}` : ' (MAX)'}
+        </span>
         {showText && (
-          <div className="text-sm font-orbitron text-primary">
-            {progress.toFixed(0)}%{xpToNextRank > 0 ? ` (${xpToNextRank} XP to go)` : ''}
-          </div>
+          <span className="text-sm font-orbitron text-primary">
+            {progress.toFixed(0)}%
+            {xpToNextRank > 0
+              ? ` (${formatNumber(xpToNextRank)} XP to go)`
+              : ''}
+          </span>
         )}
       </div>
-      <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-primary via-secondary rounded transition-all duration-1000 ease-out shadow-glow"
-          style={{ width: `${progress}%` }}
-        ></div>
+      <div
+        className="xp-bar mt-0"
+        role="progressbar"
+        aria-valuenow={Math.round(progress)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Progress to next rank: ${progress.toFixed(0)} percent`}
+      >
+        <div className="xp-bar-fill" style={{ width: `${progress}%` }} />
       </div>
     </div>
   );
 }
 
-XPBar.displayName = 'XPBar';
 export default XPBar;
